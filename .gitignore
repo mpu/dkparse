@@ -1,0 +1,4 @@
+dkparse
+dkparse.tab.c
+*.output
+*.sw[po]
