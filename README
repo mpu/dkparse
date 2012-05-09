@@ -1,0 +1,4 @@
+dkparse is a small experiment trying to see how fast a
+dedukti source file can be parsed.
+
+vi: tw=55
