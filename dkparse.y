@@ -123,7 +123,7 @@ lex(void)
 		return LONGARROW;
 	else if (!strcmp(tok, "Type"))
 		return TYPE;
-	yylval.id=dkstrdup(tok);
+	yylval.id=astrdup(tok);
 	return ID;
 }
 

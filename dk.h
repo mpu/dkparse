@@ -31,8 +31,8 @@ void *xalloc(size_t);
 void *xrealloc(void *, size_t);
 void initalloc(void);
 void deinitalloc(void);
+char *astrdup(const char *);
 void *dkalloc(size_t);
-char *dkstrdup(const char *);
 void dkfree(void);
 
 /* Module term.c */
