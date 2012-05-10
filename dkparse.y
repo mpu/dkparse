@@ -3,7 +3,7 @@
   #include <stdlib.h>
   #include <stdio.h>
   #include <string.h>
-  #define YYSTYPE char *
+  #include "dk.h"
   #define TOKLEN 128
 
   static FILE *f;
@@ -11,11 +11,20 @@
   static void yyerror(const char *);
 %}
 
+%union {
+        char *id;
+        struct Term *term;
+}
+
 %token ARROW
 %token FATARROW
 %token LONGARROW
 %token TYPE
-%token ID
+%token <id> ID
+
+%type <term> simpl
+%type <term> app
+%type <term> term
 
 %start top
 
@@ -40,25 +49,25 @@ rule: ctx term LONGARROW term '.' {
 ctx: '[' bdgs ']'
 ;
 
-bdgs: /* empty */
-    | bdgs ',' ID ':' term
-    | ID ':' term
+bdgs: /* empty */          {  }
+    | bdgs ',' ID ':' term { free($3); }
+    | ID ':' term          { free($1); }
 ;
 
-simpl: ID
-     | '(' term ')'
-     | TYPE
+simpl: ID           { $$ = mkvar($1); }
+     | '(' term ')' { $$ = $2; }
+     | TYPE         { $$ = ttype; }
 ;
 
-app: simpl
-   | app simpl
+app: simpl     { $$ = $1; }
+   | app simpl { $$ = mkapp($1, $2); }
 ;
 
-term: app
-    | ID ':' app ARROW term
-    | term ARROW term
-    | ID ':' app FATARROW term
-    | ID FATARROW term
+term: app                      { $$ = $1; }
+    | ID ':' app ARROW term    { $$ = mkpi($1, $3, $5); }
+    | term ARROW term          { $$ = mkpi(0,  $1, $3); }
+    | ID ':' app FATARROW term { $$ = mklam($1, $5); }
+    | ID FATARROW term         { $$ = mklam($1, $3); }
 ;
 %%
 
@@ -114,7 +123,7 @@ lex(void)
 		return LONGARROW;
 	else if (!strcmp(tok, "Type"))
 		return TYPE;
-	yylval=tok;
+	yylval.id=xstrdup(tok);
 	return ID;
 }
 
@@ -152,15 +161,18 @@ main(int argc, char **argv)
 		fputs("usage: dkparse FILES\n", stderr);
 		exit(1);
 	}
+	initalloc();
 	while (argv++, --argc) {
 		if (!(f=fopen(*argv, "r"))) {
 			fprintf(stderr, "Cannot open %s.\n", *argv);
 			continue;
 		}
 		printf("Parsing %s.\n", *argv);
-		while (yyparse()==0)
-			;
+		while (yyparse()==0) {
+			dkfree();
+		}
 		fclose(f);
 	}
+	deinitalloc();
 	exit(0);
 }
