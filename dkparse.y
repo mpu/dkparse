@@ -86,13 +86,13 @@ lex(void)
 	int l, c;
 
 	c=skipspaces(f);
-	if (c==EOF)
-		return 0;
 	if (c=='(' && peek(f)==';') {
-		while (fgetc(f)!=';' || peek(f)!=')');
+		while ((fgetc(f)!=';' || peek(f)!=')') && !feof(f));
 		fgetc(f); /* Drop trailing ')'. */
 		c=skipspaces(f);
 	}
+	if (c==EOF)
+		return 0;
 	if (isspecial(c))
 		return c;
 	l=0;
