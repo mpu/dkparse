@@ -43,16 +43,6 @@ xrealloc(void *p, size_t s)
 	return p;
 }
 
-/* xstrdup - A safe string copy function. Warning, it uses
- * the memory pool, and is freed at each new compiling step.
- */
-char *
-xstrdup(const char *s)
-{
-	char *t = dkalloc(strlen(s)+1);
-	return strcpy(t, s);
-}
-
 /* initalloc - Initialize the gobal memory pool.
  */
 void
@@ -83,6 +73,16 @@ dkalloc(size_t s)
 	}
 	pool[pi] = xalloc(s);
 	return pool[pi++];
+}
+
+/* dkstrdup - A safe string copy function. Warning, it uses
+ * the memory pool, and is freed at each new compiling step.
+ */
+char *
+dkstrdup(const char *s)
+{
+	char *t = dkalloc(strlen(s)+1);
+	return strcpy(t, s);
 }
 
 /* dkfree - Free the temporary memory pool.

@@ -28,11 +28,11 @@ struct Term {
 
 /* Module alloc.c */
 void *xalloc(size_t);
-char *xstrdup(const char *);
 void *xrealloc(void *, size_t);
 void initalloc(void);
 void deinitalloc(void);
 void *dkalloc(size_t);
+char *dkstrdup(const char *);
 void dkfree(void);
 
 /* Module term.c */
