@@ -49,9 +49,9 @@ rule: ctx term LONGARROW term '.' {
 ctx: '[' bdgs ']'
 ;
 
-bdgs: /* empty */          {  }
-    | bdgs ',' ID ':' term { free($3); }
-    | ID ':' term          { free($1); }
+bdgs: /* empty */          { }
+    | bdgs ',' ID ':' term { }
+    | ID ':' term          { }
 ;
 
 simpl: ID           { $$ = mkvar($1); }
