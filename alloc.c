@@ -53,7 +53,7 @@ xstrdup(const char *s)
 	return strcpy(t, s);
 }
 
-/* initalloc - Initialize the memory pool.
+/* initalloc - Initialize the gobal memory pool.
  */
 void
 initalloc(void)
@@ -62,6 +62,8 @@ initalloc(void)
 	pool=xalloc(psz*sizeof *pool);
 }
 
+/* deinitalloc - Free the global memory pool.
+ */
 void
 deinitalloc(void)
 {
