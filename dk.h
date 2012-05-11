@@ -41,3 +41,6 @@ struct Term *mkapp(struct Term *, struct Term *);
 struct Term *mkvar(char *);
 struct Term *mklam(char *, struct Term *);
 struct Term *mkpi(char *, struct Term *, struct Term *);
+
+/* Module scope.c */
+int scope(struct Term *);

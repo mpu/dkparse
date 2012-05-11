@@ -1,4 +1,4 @@
-CFILES = alloc.c term.c dkparse.tab.c
+CFILES = alloc.c term.c dkparse.tab.c scope.c
 OFILES = $(CFILES:.c=.o)
 
 dkparse: $(OFILES) dk.h
