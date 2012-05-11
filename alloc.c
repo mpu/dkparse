@@ -94,7 +94,7 @@ deinitalloc(void)
 static inline unsigned
 hash(const char *s)
 {
-	unsigned h;
+	unsigned h=113;
 	for (; *s; s++)
 		h = h*19 + (unsigned)*s;
 	return h;
