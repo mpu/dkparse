@@ -21,6 +21,12 @@ struct Term {
 	} u;
 };
 
+struct Rule {
+	struct Env *e;
+	char *x;
+	struct Term *l, *r;
+};
+
 #define uapp u.app
 #define ulam u.lam
 #define upi  u.pi
@@ -41,6 +47,11 @@ struct Term *mkapp(struct Term *, struct Term *);
 struct Term *mkvar(char *);
 struct Term *mklam(char *, struct Term *);
 struct Term *mkpi(char *, struct Term *, struct Term *);
+char *headv(struct Term *);
 
 /* Module scope.c */
+struct Env;
 int scope(struct Term *);
+struct Env *enew(void);
+void eins(struct Env *, char *, struct Term *);
+void eiter(struct Env *, void (*)(char *, struct Term *));

@@ -12,8 +12,10 @@
 %}
 
 %union {
-        char *id;
-        struct Term *term;
+	char *id;
+	struct Term *term;
+	struct Env *env;
+	struct Rule *rule;
 }
 
 %token ARROW
@@ -25,6 +27,8 @@
 %type <term> simpl
 %type <term> app
 %type <term> term
+%type <env> bdgs
+%type <rule> rule
 
 %start top
 
@@ -32,26 +36,26 @@
 
 %%
 top: /* empty */ { YYABORT; }
-   | decl
-   | rule
+   | decl        { }
+   | rule        { /*pushrule($1);*/ YYACCEPT; }
 ;
 
 decl: ID ':' term '.' {
 	printf("Read one declaration.\n");
+	//scope($3);
 	YYACCEPT;
 };
 
-rule: ctx term LONGARROW term '.' {
-	printf("Read one rewrite rule.\n");
-	YYACCEPT;
+rule: '[' bdgs ']' term LONGARROW term '.' {
+	$$ = dkalloc(sizeof *$$);
+	$$->e = $2;
+	$$->x = 0; //headv($4);
+	$$->l = $4;
+	$$->r = $6;
 };
 
-ctx: '[' bdgs ']'
-;
-
-bdgs: /* empty */          { }
-    | bdgs ',' ID ':' term { }
-    | ID ':' term          { }
+bdgs: /* empty */          { $$ = enew(); }
+    | bdgs ',' ID ':' term { eins($1, $3, $5); }
 ;
 
 simpl: ID           { $$ = mkvar($1); }
