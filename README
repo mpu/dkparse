@@ -1,4 +1,7 @@
 dkparse is a small experiment trying to see how fast a
 dedukti source file can be parsed.
 
+Now it also checks that identifiers are well scoped,
+note that it does not handle external modules yet.
+
 vi: tw=55
