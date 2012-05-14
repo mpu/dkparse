@@ -59,4 +59,5 @@ void pushscope(char *);
 enum IdStatus chscope(char *, enum IdStatus);
 struct Env *enew(void);
 void eins(struct Env *, char *, struct Term *);
+struct Term *eget(struct Env *, char *);
 void eiter(struct Env *, void (*)(char *, struct Term *));

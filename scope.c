@@ -214,6 +214,22 @@ eins(struct Env *e, char *id, struct Term *ty)
 	e->last=b;
 }
 
+/* eget - Retreive a type from the environment, if the given
+ * identifier does not have a matching type, 0 is returned.
+ */
+struct Term *
+eget(struct Env *e, char *x)
+{
+	struct B *b=e->b;
+
+	while (b) {
+		if (b->l.s==x)
+			return b->t;
+		b=(struct B *)b->l.n;
+	}
+	return 0;
+}
+
 /* eiter - Iterate a function on an environment.
  */
 void
