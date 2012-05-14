@@ -2,4 +2,5 @@ dkparse
 dkparse.tab.c
 *.o
 *.output
+*.out
 *.sw[po]
