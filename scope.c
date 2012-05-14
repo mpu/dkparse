@@ -1,5 +1,7 @@
 #include <stdio.h>
+#include <string.h>
 #include "dk.h"
+#include "lib/avl.h"
 
 /* struct L - The datatype used to store environments.
  */
@@ -23,6 +25,21 @@ struct Env {
 	struct B *last;
 };
 
+/* struct Id - A identifier is a name declared in a dedukti
+ * file, it can have sevaral statuses: DECL, is this case
+ * the identifier was declared but no rewrite rules were given;
+ * DEF, in this case the identifier was declared and rewrite
+ * rules were given to define its behavior.
+ */
+struct Id {
+	char *x;
+	enum IdStatus st;
+};
+
+/* genv - The global environment.
+ */
+extern struct Tree *genv;
+
 /* internal cons - Add a value to the current environment.
  */
 static inline void
@@ -41,6 +58,7 @@ tscope(struct Term *t, struct L *pe)
 {
 	int r=0;
 	struct L *p, *e=pe;
+	struct Id id;
 
 tail:
 	switch (t->typ) {
@@ -66,7 +84,10 @@ tail:
 		for (p=e; p; p=p->n)
 			if (p->s==t->uvar)
 				goto ret;
-		fprintf(stderr, "Variable %s is out of scope.\n", t->uvar);
+		id.x=t->uvar;
+		if (avlget(&id, genv))
+			goto ret;
+		fprintf(stderr, "%s: Variable %s is out of scope.\n", __func__, t->uvar);
 		r=1;
 		break;
 	case Type:
@@ -89,6 +110,74 @@ int
 scope(struct Term *t)
 {
 	return tscope(t, 0);
+}
+
+/* ------------- Global environment handling. ------------- */
+
+struct Tree *genv;
+
+/* internal idcmp - Compare to identifiers, this is used by
+ * the avl tree implementation.
+ */
+static int
+idcmp(void *a, void *b)
+{
+	return strcmp(((struct Id *)a)->x, ((struct Id *)b)->x);
+}
+
+/* initscope - Initialize the global scope environment.
+ */
+void
+initscope(void)
+{
+	genv=avlnew(idcmp, free);
+}
+
+/* deinitscope - Free the global environment and all its
+ * contents.
+ */
+void
+deinitscope(void)
+{
+	avlfree(genv);
+	genv=0;
+}
+
+/* pushscope - Add an identifier to the global scope, by default
+ * this identifier will be in DEF state. It will display an error
+ * message if the identifier is already in the global scope.
+ */
+void
+pushscope(char *x)
+{
+	struct Id *id=xalloc(sizeof *id);
+
+	id->x=x;
+	id->st=DEF;
+	if (avlget(id, genv)) {
+		fprintf(stderr, "%s: Id %s already declared.\n", __func__, x);
+		exit(1); // FIXME
+	}
+	avlins(id, genv);
+}
+
+/* chscope - Change the status of an identifier already in scope.
+ * The old status is returned.
+ */
+enum IdStatus
+chscope(char *x, enum IdStatus st)
+{
+	enum IdStatus old;
+	struct Id *id, idx = { x };
+
+	id=avlget(&idx, genv);
+	if (!id) {
+		fprintf(stderr, "%s: Id %s is out of scope.\n", __func__, x);
+		exit(1); // FIXME
+	}
+	old=id->st;
+	id->st=st;
+	return old;
 }
 
 /* ------------- Rule environments handling. ------------- */

@@ -51,7 +51,12 @@ char *headv(struct Term *);
 
 /* Module scope.c */
 struct Env;
+enum IdStatus { DECL, DEF };
 int scope(struct Term *);
+void initscope(void);
+void deinitscope(void);
+void pushscope(char *);
+enum IdStatus chscope(char *, enum IdStatus);
 struct Env *enew(void);
 void eins(struct Env *, char *, struct Term *);
 void eiter(struct Env *, void (*)(char *, struct Term *));

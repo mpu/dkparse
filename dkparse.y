@@ -42,7 +42,9 @@ top: /* empty */ { YYABORT; }
 
 decl: ID ':' term '.' {
 	printf("Read one declaration.\n");
-	//scope($3);
+	if (scope($3))
+		exit(1); // FIXME
+	pushscope($1);
 	YYACCEPT;
 };
 
@@ -56,6 +58,7 @@ rule: '[' bdgs ']' term LONGARROW term '.' {
 
 bdgs: /* empty */          { $$ = enew(); }
     | bdgs ',' ID ':' term { eins($1, $3, $5); }
+    | ID ':' term          { $$ = enew(); eins($$, $1, $3); }
 ;
 
 simpl: ID           { $$ = mkvar($1); }
@@ -166,6 +169,7 @@ main(int argc, char **argv)
 		exit(1);
 	}
 	initalloc();
+	initscope();
 	while (argv++, --argc) {
 		if (!(f=fopen(*argv, "r"))) {
 			fprintf(stderr, "Cannot open %s.\n", *argv);
@@ -177,6 +181,7 @@ main(int argc, char **argv)
 		}
 		fclose(f);
 	}
+	deinitscope();
 	deinitalloc();
 	exit(0);
 }
