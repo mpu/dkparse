@@ -15,7 +15,6 @@
 	char *id;
 	struct Term *term;
 	struct Env *env;
-	struct Rule *rule;
 }
 
 %token ARROW
@@ -28,37 +27,39 @@
 %type <term> app
 %type <term> term
 %type <env> bdgs
-%type <rule> rule
 
 %start top
 
 %right ARROW FATARROW
 
 %%
-top: /* empty */ { YYABORT; }
-   | decl        { }
-   | rule        { /*pushrule($1);*/ YYACCEPT; }
+top: /* empty */   { YYABORT; }
+   | decl '.'  { dkfree(); YYACCEPT; }
+   | rules '.' { dorules(); YYACCEPT; }
 ;
 
-decl: ID ':' term '.' {
+rules: rule
+     | rules rule
+;
+
+decl: ID ':' term {
 	printf("Read one declaration.\n");
-	if (scope($3))
+	if (scope($3, 0))
 		exit(1); // FIXME
 	pushscope($1);
-	YYACCEPT;
 };
 
-rule: '[' bdgs ']' term LONGARROW term '.' {
-	$$ = dkalloc(sizeof *$$);
-	$$->e = $2;
-	$$->x = 0; //headv($4);
-	$$->l = $4;
-	$$->r = $6;
+rule: '[' bdgs ']' term LONGARROW term {
+	struct Rule *r = dkalloc(sizeof *r);
+	r->e = $2;
+	r->l = $4;
+	r->r = $6;
+	pushrule(r);
 };
 
-bdgs: /* empty */          { $$ = enew(); }
-    | bdgs ',' ID ':' term { eins($1, $3, $5); }
-    | ID ':' term          { $$ = enew(); eins($$, $1, $3); }
+bdgs: /* empty */          { $$ = 0; }
+    | bdgs ',' ID ':' term { $$ = eins($1, $3, $5); }
+    | ID ':' term          { $$ = eins(0, $1, $3); }
 ;
 
 simpl: ID           { $$ = mkvar($1); }
@@ -176,9 +177,7 @@ main(int argc, char **argv)
 			continue;
 		}
 		printf("Parsing %s.\n", *argv);
-		while (yyparse()==0) {
-			dkfree();
-		}
+		while (yyparse()==0);
 		fclose(f);
 	}
 	deinitscope();

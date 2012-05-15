@@ -23,7 +23,6 @@ struct Term {
 
 struct Rule {
 	struct Env *e;
-	char *x;
 	struct Term *l, *r;
 };
 
@@ -47,17 +46,21 @@ struct Term *mkapp(struct Term *, struct Term *);
 struct Term *mkvar(char *);
 struct Term *mklam(char *, struct Term *);
 struct Term *mkpi(char *, struct Term *, struct Term *);
-char *headv(struct Term *);
+int napps(struct Term *, struct Term **);
 
 /* Module scope.c */
 struct Env;
 enum IdStatus { DECL, DEF };
-int scope(struct Term *);
+int scope(struct Term *, struct Env *);
 void initscope(void);
 void deinitscope(void);
 void pushscope(char *);
 enum IdStatus chscope(char *, enum IdStatus);
-struct Env *enew(void);
-void eins(struct Env *, char *, struct Term *);
+struct Env *eins(struct Env *, char *, struct Term *);
 struct Term *eget(struct Env *, char *);
 void eiter(struct Env *, void (*)(char *, struct Term *));
+int escope(struct Env *);
+
+/* Module rule.c */
+int pushrule(struct Rule *);
+void dorules(void);
