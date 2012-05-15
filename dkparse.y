@@ -33,9 +33,9 @@
 %right ARROW FATARROW
 
 %%
-top: /* empty */   { YYABORT; }
-   | decl '.'  { dkfree(); YYACCEPT; }
-   | rules '.' { dorules(); YYACCEPT; }
+top: /* empty */ { YYABORT; }
+   | decl '.'    { dkfree(); YYACCEPT; }
+   | rules '.'   { dorules(); YYACCEPT; }
 ;
 
 rules: rule
@@ -44,8 +44,10 @@ rules: rule
 
 decl: ID ':' term {
 	printf("Read one declaration.\n");
-	if (scope($3, 0))
-		exit(1); // FIXME
+	if (scope($3, 0)) {
+		fprintf(stderr, "Scope error in type of %s.\n", $1);
+		exit(1);
+	}
 	pushscope($1);
 };
 
