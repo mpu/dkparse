@@ -49,3 +49,20 @@ mkpi(char *s, struct Term *ty, struct Term *a)
 	t->upi.t = a;
 	return t;
 }
+
+/* napps - Peel a succession of applications and return
+ * the number of terms which are arguments in the spine.
+ * If the p pointer is not null, the leftmost term in the
+ * spine is assigned to the object pointed by p.
+ */
+int
+napps(struct Term *t, struct Term **p)
+{
+	int r;
+
+	for (r=0; t->typ==App; t=t->uapp.t1)
+		r++;
+	if (p)
+		*p=t;
+	return r;
+}
