@@ -45,7 +45,7 @@ rules: rule
 decl: ID ':' term {
 	printf("Read one declaration.\n");
 	if (scope($3, 0)) {
-		fprintf(stderr, "Scope error in type of %s.\n", $1);
+		fprintf(stderr, "%s: Scope error in type of %s.\n", __func__, $1);
 		exit(1);
 	}
 	pushscope($1);
