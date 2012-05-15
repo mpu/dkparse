@@ -135,6 +135,7 @@ chklhs(struct Env *e, struct Term *t)
 	id.x=t->uvar;
 	if (eget(e, id.x)) {
 		if (id.n==0) {
+			id.n=tget(&vr, id.x)+1;
 			tset(&vr, id);
 			return 0;
 		}
@@ -158,9 +159,17 @@ chklhs(struct Env *e, struct Term *t)
 static void
 chkenv(char *x, struct Term *t)
 {
-	if (tget(&vr, x)<0) {
+	int a;
+
+	a=tget(&vr, x);
+	if (a<0) {
 		fprintf(stderr, "%s: Variable %s does not appear in pattern.\n"
 		              , __func__, x);
+		eerr=1;
+	}
+	else if (a>0) {
+		fprintf(stderr, "%s: Variable %s appears %d times in pattern.\n"
+		              , __func__, x, a+1);
 		eerr=1;
 	}
 }
