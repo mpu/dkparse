@@ -10,7 +10,7 @@
  * the symbol defined by this rule set.
  */
 static struct {
-	struct Rule *s[MAXRULES];
+	struct Rule s[MAXRULES];
 	int i, ar;
 	char *x;
 } rs;
@@ -21,14 +21,17 @@ static struct {
  * memory is available, 1 is returned, otherwise, 0 is returned.
  */
 int
-pushrule(struct Rule *r)
+pushrule(struct Env *e, struct Term *l, struct Term *r)
 {
 	if (rs.i>=MAXRULES) {
 		fprintf(stderr, "%s: Too many rules accumulated.\n"
 		                "\tThe limit is %d.\n", __func__, MAXRULES);
 		return 1;
 	}
-	rs.s[rs.i++]=r;
+	rs.s[rs.i].e=e;
+	rs.s[rs.i].l=l;
+	rs.s[rs.i].r=r;
+	rs.i++;
 	return 0;
 }
 
@@ -73,7 +76,7 @@ static int eerr;
  * in the arrays ar or vr. The old value of the integer is returned,
  * if the identifier was not in the array, -1 is returned.
  */
-static int
+static inline int
 tset(struct Arr *a, struct IdN id)
 {
 	int r;
@@ -97,7 +100,7 @@ tset(struct Arr *a, struct IdN id)
 /* internal tget - Retreive the integer associated to an identifier
  * in an array. If the identifier is not bound, then -1 is returned.
  */
-static int
+static inline int
 tget(struct Arr *a, char *x)
 {
 	size_t i;
@@ -175,7 +178,7 @@ rchk(void)
 	assert(rs.i>0);
 	ar.i=vr.i=0;
 
-	rs.ar=napps(rs.s[0]->l, &t);
+	rs.ar=napps(rs.s[0].l, &t);
 	if (t->typ!=Var)
 		fail("%s: Head of the rule must be a constant.\n", __func__);
 	rs.x=t->uvar;
@@ -186,19 +189,19 @@ rchk(void)
 		     ,__func__);
 
 	for (r=0; r<rs.i; r++) {
-		if (escope(rs.s[r]->e))
+		if (escope(rs.s[r].e))
 			fail("%s: Environment is not properly scoped.\n"
 			     ,__func__);
-		if (eget(rs.s[r]->e, rs.x))
+		if (eget(rs.s[r].e, rs.x))
 			fail("%s: Head symbol must not be in environment.\n"
 			     ,__func__);
 
-		for (t=rs.s[r]->l, a=0; t->typ==App; t=t->uapp.t1, a++) {
-			if (chklhs(rs.s[r]->e, t->uapp.t2))
+		for (t=rs.s[r].l, a=0; t->typ==App; t=t->uapp.t1, a++) {
+			if (chklhs(rs.s[r].e, t->uapp.t2))
 				goto err;
 		}
 		eerr=0;
-		eiter(rs.s[r]->e, chkenv);
+		eiter(rs.s[r].e, chkenv);
 		if (eerr)
 			goto err;
 
@@ -209,7 +212,7 @@ rchk(void)
 		if (a!=rs.ar)
 			fail("%s: All rules must have the same arity.\n"
 			     ,__func__);
-		if (scope(rs.s[r]->l, rs.s[r]->e) || scope(rs.s[r]->r, rs.s[r]->e))
+		if (scope(rs.s[r].l, rs.s[r].e) || scope(rs.s[r].r, rs.s[r].e))
 			goto err;
 	}
 	return 0;

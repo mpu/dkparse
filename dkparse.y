@@ -51,13 +51,8 @@ decl: ID ':' term {
 	pushscope($1);
 };
 
-rule: '[' bdgs ']' term LONGARROW term {
-	struct Rule *r = dkalloc(sizeof *r);
-	r->e = $2;
-	r->l = $4;
-	r->r = $6;
-	pushrule(r);
-};
+rule: '[' bdgs ']' term LONGARROW term { pushrule($2, $4, $6); }
+;
 
 bdgs: /* empty */          { $$ = 0; }
     | bdgs ',' ID ':' term { $$ = eins($1, $3, $5); }

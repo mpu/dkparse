@@ -62,5 +62,5 @@ void eiter(struct Env *, void (*)(char *, struct Term *));
 int escope(struct Env *);
 
 /* Module rule.c */
-int pushrule(struct Rule *);
+int pushrule(struct Env *, struct Term *, struct Term *);
 void dorules(void);
