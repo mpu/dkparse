@@ -51,10 +51,10 @@ int napps(struct Term *, struct Term **);
 /* Module scope.c */
 struct Env;
 enum IdStatus { DECL, DEF };
-int scope(struct Term *, struct Env *);
 void initscope(void);
 void deinitscope(void);
 void pushscope(char *);
+int scope(struct Term *, struct Env *);
 enum IdStatus chscope(char *, enum IdStatus);
 struct Env *eins(struct Env *, char *, struct Term *);
 struct Term *eget(struct Env *, char *);
