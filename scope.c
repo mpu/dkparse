@@ -12,17 +12,23 @@ struct L {
 
 /* struct Env - Environments are pairs of an identifier
  * and a term (its type), we use a nested struct L in order
- * to be able to cast a pointer to struct B into a pointer
+ * to be able to cast a pointer to struct Env into a pointer
  * to struct L and vice versa.
- * The 'last' pointer is used to keep track of the last
- * inserted element in the list.
+ * The p pointer is used to have a doubly linked list.
+ * The list defined by l.n is a valid simply linked list,
+ * while the one defined by p is looped.
+ * Here is a small diagram that explains it.
+ *
+ *     __ n  __    __    __
+ *    |  |->|  |->|  |->|  |->0
+ *  ,-|__|<-|__|<-|__|<-|__|<-.
+ *  \________________________/
+ *               p
  */
 struct Env {
-	struct B {
-		struct L l;
-		struct Term *t;
-	} *b;
-	struct B *last;
+	struct L l;
+	struct Term *t;
+	struct Env *p;
 };
 
 /* struct Id - A identifier is a name declared in a dedukti
@@ -87,7 +93,9 @@ tail:
 		id.x=t->uvar;
 		if (avlget(&id, genv))
 			goto ret;
-		fprintf(stderr, "%s: Variable %s is out of scope.\n", __func__, t->uvar);
+		if (strchr(id.x, '.')) /* XXX Temporary hack to handle modules. */
+			goto ret;
+		fprintf(stderr, "%s: Variable %s is out of scope.\n", __func__, id.x);
 		r=1;
 		break;
 	case Type:
@@ -104,12 +112,13 @@ ret:
 	return r;
 }
 
-/* scope -
+/* scope - Scope a term in the global environment plus the given
+ * environment.
  */
 int
-scope(struct Term *t)
+scope(struct Term *t, struct Env *e)
 {
-	return tscope(t, 0);
+	return tscope(t, (struct L *)e);
 }
 
 /* ------------- Global environment handling. ------------- */
@@ -182,36 +191,24 @@ chscope(char *x, enum IdStatus st)
 
 /* ------------- Rule environments handling. ------------- */
 
-/* enew - Returns a fresh empty environment. The environment
- * cell is allocated on the temporary heap.
- */
-struct Env *
-enew(void)
-{
-	struct Env *e=dkalloc(sizeof *e);
-
-	e->b=0;
-	e->last=0;
-	return e;
-}
-
 /* eins - Insert a binding in an environment. The environment
  * cell is allocated on the temporary heap.
  */
-void
+struct Env *
 eins(struct Env *e, char *id, struct Term *ty)
 {
-	struct B *b=dkalloc(sizeof *b);
+	struct Env *pe=dkalloc(sizeof *pe);
 
-	b->l.s=id;
-	b->l.n=0;
-	b->t=ty;
+	pe->l.s=id;
+	pe->l.n=(struct L *)e;
+	pe->t=ty;
 
-	if (!e->last)
-		e->b=b;
-	else
-		e->last->l.n=&b->l;
-	e->last=b;
+	if (e) {
+		pe->p=e->p;
+		e->p=pe;
+	} else
+		pe->p=pe;
+	return pe;
 }
 
 /* eget - Retreive a type from the environment, if the given
@@ -220,12 +217,10 @@ eins(struct Env *e, char *id, struct Term *ty)
 struct Term *
 eget(struct Env *e, char *x)
 {
-	struct B *b=e->b;
-
-	while (b) {
-		if (b->l.s==x)
-			return b->t;
-		b=(struct B *)b->l.n;
+	while (e) {
+		if (e->l.s==x)
+			return e->t;
+		e=(struct Env *)e->l.n;
 	}
 	return 0;
 }
@@ -235,10 +230,26 @@ eget(struct Env *e, char *x)
 void
 eiter(struct Env *e, void (*f)(char *, struct Term *))
 {
-	struct B *b=e->b;
+	struct Env *pe;
 
-	while (b) {
-		f(b->l.s, b->t);
-		b=(struct B *)b->l.n;
+	if (!e)
+		return;
+	for (pe=e->p; pe!=e; pe=pe->p)
+		f(pe->l.s, pe->t);
+	f(pe->l.s, pe->t);
+}
+
+/* escope - Check that an environment is well scoped.
+ * If the environment is not properly scoped, 1 is returned,
+ * otherwise, 0 is returned.
+ */
+int
+escope(struct Env *e)
+{
+	while (e) {
+		if (tscope(e->t, e->l.n))
+			return 1;
+		e=(struct Env *)e->l.n;
 	}
+	return 0;
 }
