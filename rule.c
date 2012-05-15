@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "dk.h"
-#include "lib/avl.h"
 #define MAXRULES 32
 
 /* internal rs - This stack is used by the parser to
@@ -46,22 +45,67 @@ flushrules(void)
 
 /* ------------- Rule checking. ------------- */
 
-/* struct IdA - This structure associates a symbol with its arity,
- * it is used in balanced trees to check well formation of rewrite
- * rules.
+/* ALEN - Constant used to initialize the size of arrays
+ * ar and vr defined below.
  */
-struct IdA {
+#define ALEN 1024
+
+/* struct IdN - This structure associates a symbol with a number,
+ * it is used to check well formation of rewrite rules.
+ */
+struct IdN {
 	char *x;
-	int ar;
+	int n;
 };
 
-/* internal idacmp - Compare to struct IdA, this is used by the
- * balanced tree library.
+/* internal ar vr - These two arrays are used to associate constructors
+ * with arities (ar) and to memoize if a variable was used or not in the
+ * pattern (vr).
+ */
+static struct Arr {
+	struct IdN t[ALEN];
+	size_t i;
+} ar, vr;
+
+static int eerr;
+
+/* internal tset - Change the integer associated to an identifier
+ * in the arrays ar or vr. The old value of the integer is returned,
+ * if the identifier was not in the array, -1 is returned.
  */
 static int
-idacmp(void *a, void *b)
+tset(struct Arr *a, struct IdN id)
 {
-	return strcmp(((struct IdA *)a)->x, ((struct IdA *)b)->x);
+	int r;
+	size_t i;
+
+	for (i=0; i<a->i; i++)
+		if (a->t[i].x==id.x) {
+			r=a->t[i].n;
+			a->t[i].n=id.n;
+			return r;
+		}
+	if (a->i>=ALEN) {
+		fprintf(stderr, "%s: Maximum array size reached.\n"
+		                "\tThe maximum is %d.\n", __func__, ALEN);
+		exit(1); // FIXME
+	}
+	a->t[a->i++]=id;
+	return -1;
+}
+
+/* internal tget - Retreive the integer associated to an identifier
+ * in an array. If the identifier is not bound, then -1 is returned.
+ */
+static int
+tget(struct Arr *a, char *x)
+{
+	size_t i;
+
+	for (i=0; i<a->i; i++)
+		if (a->t[i].x==x)
+			return a->t[i].n;
+	return -1;
 }
 
 /* internal chkrule - Checks that a given term in the left hand
@@ -70,12 +114,13 @@ idacmp(void *a, void *b)
  * contains mappings from constructors to arities.
  */
 static int
-chklhs(struct Tree *ar, struct Env *e, struct Term *t)
+chklhs(struct Env *e, struct Term *t)
 {
-	struct IdA id, *pid;
+	int a;
+	struct IdN id;
 
-	for (id.ar=0; t->typ==App; t=t->uapp.t1, id.ar++) {
-		if (chklhs(ar, e, t->uapp.t2))
+	for (id.n=0; t->typ==App; t=t->uapp.t1, id.n++) {
+		if (chklhs(e, t->uapp.t2))
 			return 1;
 	}
 	if (t->typ!=Var) {
@@ -86,26 +131,35 @@ chklhs(struct Tree *ar, struct Env *e, struct Term *t)
 	}
 	id.x=t->uvar;
 	if (eget(e, id.x)) {
-		if (id.ar==0)
+		if (id.n==0) {
+			tset(&vr, id);
 			return 0;
+		}
 		fprintf(stderr, "%s: Pattern variable %s cannot be applied.\n"
 		              , __func__, id.x);
 		return 1;
 	}
-	pid=avlget(&id, ar);
-	if (pid) {
-		if (pid->ar!=id.ar) {
-			fprintf(stderr, "%s: Constructor %s must have constant"
-			                " arity (%d) in patterns.\n"
-			              , __func__, id.x, id.ar);
-			return 1;
-		}
-	} else {
-		pid=xalloc(sizeof *pid);
-		memcpy(pid, &id, sizeof id);
-		avlins(pid, ar);
+	a=tset(&ar, id);
+	if (a>=0 && a!=id.n) {
+		fprintf(stderr, "%s: Constructor %s must have constant"
+		                " arity (%d) in patterns.\n"
+		              , __func__, id.x, id.n);
+		return 1;
 	}
 	return 0;
+}
+
+/* internal chkenv - Checks that a member of the environment is in
+ * the array vr. If not, the variable eerr is set to 1.
+ */
+static void
+chkenv(char *x, struct Term *t)
+{
+	if (tget(&vr, x)<0) {
+		fprintf(stderr, "%s: Variable %s does not appear in pattern.\n"
+		              , __func__, x);
+		eerr=1;
+	}
 }
 
 /* internal rchk - Checks that the current rule set is valid.
@@ -116,11 +170,11 @@ rchk(void)
 {
 #define fail(...) do { fprintf(stderr, __VA_ARGS__); goto err; } while (0)
 	int r, a;
-	struct Tree *ar;
 	struct Term *t;
 
 	assert(rs.i>0);
-	ar=avlnew(idacmp, free);
+	ar.i=vr.i=0;
+
 	rs.ar=napps(rs.s[0]->l, &t);
 	if (t->typ!=Var)
 		fail("%s: Head of the rule must be a constant.\n", __func__);
@@ -140,9 +194,14 @@ rchk(void)
 			     ,__func__);
 
 		for (t=rs.s[r]->l, a=0; t->typ==App; t=t->uapp.t1, a++) {
-			if (chklhs(ar, rs.s[r]->e, t->uapp.t2))
+			if (chklhs(rs.s[r]->e, t->uapp.t2))
 				goto err;
 		}
+		eerr=0;
+		eiter(rs.s[r]->e, chkenv);
+		if (eerr)
+			goto err;
+
 		if (t->typ!=Var || t->uvar!=rs.x)
 			fail("%s: All rewrite rules must have the same"
 			     " head constant.\n"
@@ -153,10 +212,8 @@ rchk(void)
 		if (scope(rs.s[r]->l, rs.s[r]->e) || scope(rs.s[r]->r, rs.s[r]->e))
 			goto err;
 	}
-	avlfree(ar);
 	return 0;
 err:
-	avlfree(ar);
 	return 1;
 #undef fail
 }
