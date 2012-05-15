@@ -144,9 +144,9 @@ chklhs(struct Env *e, struct Term *t)
 	}
 	a=tset(&ar, id);
 	if (a>=0 && a!=id.n) {
-		fprintf(stderr, "%s: Constructor %s must have constant"
-		                " arity (%d) in patterns.\n"
-		              , __func__, id.x, id.n);
+		fprintf(stderr, "%s: Constructor %s must not have several"
+		                " arities (%d and %d).\n"
+		              , __func__, id.x, a, id.n);
 		return 1;
 	}
 	return 0;
