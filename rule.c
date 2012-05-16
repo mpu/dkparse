@@ -2,18 +2,13 @@
 #include <stdio.h>
 #include <string.h>
 #include "dk.h"
-#define MAXRULES 32
 
 /* internal rs - This stack is used by the parser to
  * accumulate related rewrite rules (rules concerning a
  * given identifier). The ar field stores the arity of
  * the symbol defined by this rule set.
  */
-static struct {
-	struct Rule s[MAXRULES];
-	int i, ar;
-	char *x;
-} rs;
+static struct RSet rs;
 
 /* ------------- Rule stack manipulations. ------------- */
 
@@ -70,8 +65,6 @@ static struct Arr {
 	size_t i;
 } ar, vr;
 
-static int eerr;
-
 /* internal tset - Change the integer associated to an identifier
  * in the arrays ar or vr. The old value of the integer is returned,
  * if the identifier was not in the array, -1 is returned.
@@ -127,7 +120,7 @@ chklhs(struct Env *e, struct Term *t)
 			return 1;
 	}
 	if (t->typ!=Var) {
-		fprintf(stderr, "%s: Only variables can be applied"
+		fprintf(stderr, "%s: Only constructors can be applied"
 		                " in patterns.\n"
 		              , __func__);
 		return 1;
@@ -154,10 +147,10 @@ chklhs(struct Env *e, struct Term *t)
 }
 
 /* internal chkenv - Checks that a member of the environment is in
- * the array vr. If not, the variable eerr is set to 1.
+ * the array vr. If not, it sets the integer at *(int *)peerr to 1.
  */
 static void
-chkenv(char *x, struct Term *t)
+chkenv(char *x, struct Term *t, void *peerr)
 {
 	int a;
 
@@ -165,12 +158,12 @@ chkenv(char *x, struct Term *t)
 	if (a<0) {
 		fprintf(stderr, "%s: Variable %s does not appear in pattern.\n"
 		              , __func__, x);
-		eerr=1;
+		*(int *)peerr=1;
 	}
 	else if (a>0) {
 		fprintf(stderr, "%s: Variable %s appears %d times in pattern.\n"
 		              , __func__, x, a+1);
-		eerr=1;
+		*(int *)peerr=1;
 	}
 }
 
@@ -181,7 +174,7 @@ static int
 rchk(void)
 {
 #define fail(...) do { fprintf(stderr, __VA_ARGS__); goto err; } while (0)
-	int r, a;
+	int r, a, eerr;
 	struct Term *t;
 
 	assert(rs.i>0);
@@ -210,7 +203,7 @@ rchk(void)
 				goto err;
 		}
 		eerr=0;
-		eiter(rs.s[r].e, chkenv);
+		eiter(rs.s[r].e, chkenv, &eerr);
 		if (eerr)
 			goto err;
 
@@ -245,6 +238,7 @@ dorules(void)
 		              , __func__, rs.x);
 		exit(1); // FIXME
 	}
+	genrules(&rs);
 	flushrules();
 	dkfree();
 }

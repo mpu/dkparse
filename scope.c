@@ -228,15 +228,29 @@ eget(struct Env *e, char *x)
 /* eiter - Iterate a function on an environment.
  */
 void
-eiter(struct Env *e, void (*f)(char *, struct Term *))
+eiter(struct Env *e, void (*f)(char *, struct Term *, void *), void *p)
 {
 	struct Env *pe;
 
 	if (!e)
 		return;
 	for (pe=e->p; pe!=e; pe=pe->p)
-		f(pe->l.s, pe->t);
-	f(pe->l.s, pe->t);
+		f(pe->l.s, pe->t, p);
+	f(pe->l.s, pe->t, p);
+}
+
+/* elen - Return the size of an environment.
+ */
+size_t
+elen(struct Env *e)
+{
+	size_t s=0;
+
+	while (e) {
+		s++;
+		e=(struct Env *)e->l.n;
+	}
+	return s;
 }
 
 /* escope - Check that an environment is well scoped.

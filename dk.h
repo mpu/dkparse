@@ -26,6 +26,13 @@ struct Rule {
 	struct Term *l, *r;
 };
 
+#define MAXRULES 32
+struct RSet {
+	struct Rule s[MAXRULES];
+	int i, ar;
+	char *x;
+};
+
 #define uapp u.app
 #define ulam u.lam
 #define upi  u.pi
@@ -58,9 +65,14 @@ int scope(struct Term *, struct Env *);
 enum IdStatus chscope(char *, enum IdStatus);
 struct Env *eins(struct Env *, char *, struct Term *);
 struct Term *eget(struct Env *, char *);
-void eiter(struct Env *, void (*)(char *, struct Term *));
+void eiter(struct Env *, void (*)(char *, struct Term *, void *), void *);
+size_t elen(struct Env *);
 int escope(struct Env *);
 
 /* Module rule.c */
 int pushrule(struct Env *, struct Term *, struct Term *);
 void dorules(void);
+
+/* Module gen.c */
+void genrules(struct RSet *);
+void gendecl(char *, struct Term *);
