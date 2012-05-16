@@ -153,7 +153,7 @@ deinitscope(void)
 }
 
 /* pushscope - Add an identifier to the global scope, by default
- * this identifier will be in DEF state. It will display an error
+ * this identifier will be in DECL state. It will display an error
  * message if the identifier is already in the global scope.
  */
 void
@@ -162,7 +162,7 @@ pushscope(char *x)
 	struct Id *id=xalloc(sizeof *id);
 
 	id->x=x;
-	id->st=DEF;
+	id->st=DECL;
 	if (avlget(id, genv)) {
 		fprintf(stderr, "%s: Id %s already declared.\n", __func__, x);
 		exit(1); // FIXME
