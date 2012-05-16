@@ -62,8 +62,8 @@ struct IdN {
 };
 
 /* internal ar vr - These two arrays are used to associate constructors
- * with arities (ar) and to memoize if a variable was used or not in the
- * pattern (vr).
+ * with arities (ar) and to associate variables to their number of uses
+ * in patterns (in vr).
  */
 static struct Arr {
 	struct IdN t[ALEN];
