@@ -240,6 +240,11 @@ dorules(void)
 		              , __func__, rs.x?rs.x:"???");
 		exit(1); // FIXME
 	}
+	if (chscope(rs.x, DEF)==DEF) {
+		fprintf(stderr, "%s: Identifer %s must not be defined twice.\n"
+		              , __func__, rs.x);
+		exit(1); // FIXME
+	}
 	flushrules();
 	dkfree();
 }
