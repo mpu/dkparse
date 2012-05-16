@@ -158,27 +158,29 @@ pmspec(struct PMat m, char *x, int ar, int c)
 	}
 	n.m=dkalloc(n.r*sizeof *n.m);
 
-	for (k=i=0; i<n.r; k++)
-		if (m.m[k].ps[c].c==x) {
+	for (k=i=0; i<n.r; k++) {
+		struct Pat *ps=m.m[k].ps;
+		if (ps[c].c==x) {
 			n.m[i].ps=dkalloc(n.c*spat);
-			n.m[i].rhs=m.m[i].rhs;
-			memcpy(n.m[i].ps, m.m[k].ps, c*spat);
-			memcpy(&n.m[i].ps[c], m.m[k].ps[c].ps, ar*spat);
-			memcpy(&n.m[i].ps[c+ar], &m.m[k].ps[c+1], (n.c-c-ar)*spat);
+			n.m[i].rhs=m.m[k].rhs;
+			memcpy(n.m[i].ps, ps, c*spat);
+			memcpy(n.m[i].ps+c, ps[c].ps, ar*spat);
+			memcpy(n.m[i].ps+c+ar, ps+c+1, (n.c-c-ar)*spat);
 			i++;
 		}
-		else if (m.m[k].ps[c].ar<0) {
+		else if (ps[c].ar<0) {
 			n.m[i].ps=dkalloc(n.c*spat);
-			n.m[i].rhs=m.m[i].rhs;
-			memcpy(n.m[i].ps, m.m[k].ps, c*spat);
+			n.m[i].rhs=m.m[k].rhs;
+			memcpy(n.m[i].ps, ps, c*spat);
 			for (j=0; j<ar; j++) {
 				n.m[i].ps[c+j].c=0;
 				n.m[i].ps[c+j].ar=-1;
 				n.m[i].ps[c+j].ps=0;
 			}
-			memcpy(&n.m[i].ps[c+ar], &m.m[k].ps[c+1], (n.c-c-ar)*spat);
+			memcpy(n.m[i].ps+c+ar, ps+c+1, (n.c-c-ar)*spat);
 			i++;
 		}
+	}
 	return n;
 }
 
@@ -208,7 +210,7 @@ pmdef(struct PMat m, int c)
 		if (m.m[k].ps[c].ar<0) {
 			n.m[i].ps=dkalloc(n.c*spat);
 			n.m[i].rhs=m.m[k].rhs;
-			memcpy(n.m[i].ps, &m.m[k].ps[1], n.c*spat);
+			memcpy(n.m[i].ps, m.m[k].ps+1, n.c*spat);
 			i++;
 		}
 	return n;
@@ -229,12 +231,13 @@ pmdef(struct PMat m, int c)
 /* internal comprs - Compile a rule set following a pattern
  * matching algorithm described in a paper by Luc Maranget:
  *
- *   Compiling Pattern Matching to Good Decision Trees, ML'08
+ *   Compiling Pattern Matching to Good Decision Trees, ML'08.
  */
 static void
 comprs(struct PMat pm)
 {
 	int i, c;
+	struct Pat *p;
 
 	if (pm.r==0) {
 		emit("fail\n");
@@ -248,14 +251,17 @@ comprs(struct PMat pm)
 		return;
 	}
 
-	emit("if %s then\n", pm.m[0].ps[c].c);
-	comprs(pmspec(pm, pm.m[0].ps[c].c, pm.m[0].ps[c].ar, c));
+	p=&pm.m[0].ps[c];
+	emit("if %s then\n", p->c);
+	comprs(pmspec(pm, p->c, p->ar, c));
 
-	for (i=1; i<pm.r; i++)
-		if (pm.m[i].ps[c].ar>=0) {
-			emit("else if %s then\n", pm.m[i].ps[c].c);
-			comprs(pmspec(pm, pm.m[i].ps[c].c, pm.m[i].ps[c].ar, c));
+	for (i=1; i<pm.r; i++) {
+		p=&pm.m[i].ps[c];
+		if (p->ar>=0) {
+			emit("elseif %s then\n", p->c);
+			comprs(pmspec(pm, p->c, p->ar, c));
 		}
+	}
 
 	emit("else\n");
 	comprs(pmdef(pm, c));
@@ -297,8 +303,10 @@ genrules(struct RSet *rs)
 	}
 
 	if (rs->ar>0) {
+		emit("{- Compiling rules for %s. -}\n", rs->x);
 		pm=pmnew(rs, vpa);
 		comprs(pm);
+		emit("\n");
 	}
 	return;
 }
