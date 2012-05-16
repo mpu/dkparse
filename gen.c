@@ -134,7 +134,7 @@ pmnew(struct RSet *rs, struct VPth *vpa[])
 
 /* ------------- Pattern matrices operations. ------------- */
 
-/* internal pmsec - Create a pattern matrix by specializing
+/* internal pmspec - Create a pattern matrix by specializing
  * the column of another pattern matrix for a given constructor
  * of a given arity.
  * The index given specifies the column to be specialized.
