@@ -72,7 +72,7 @@ avlget(void *p, struct Tree *t)
 	while (n) {
 		int c=t->cmp(p, n->p);
 		if (c==0)
-			return p;
+			return n->p;
 		n=n->n[c>0];
 	}
 	return 0;
