@@ -444,7 +444,7 @@ gterm(struct Term *t)
 	case Lam:
 		emit("{ tk = tlam, tlam = { nil, ");
 		emit("function (%s, ", gname(T, t->ulam.x));
-		emit(", %s) return ", gname(C, t->ulam.x));
+		emit("%s) return ", gname(C, t->ulam.x));
 		gterm(t->ulam.t);
 		emit(" end } }");
 		break;
