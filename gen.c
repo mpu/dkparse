@@ -190,9 +190,8 @@ pmspec(struct PMat m, char *x, int ar, int c)
 	return n;
 }
 
-/* internal pmdef - Default a pattern matrix. This occurs when
- * we generate code for a wildcard branch. This is used in comprs
- * later on.
+/* internal pmdef - Default a pattern matrix.
+ * The index given specifies the column to be specialized.
  */
 static struct PMat
 pmdef(struct PMat m, int c)
@@ -297,9 +296,10 @@ comprs(struct PMat pm)
 	emit("\nend\n");
 }
 
-/* internal fillvpa - This function will fill the struct VPth object
- * designated by *ppa with the given environment. The path field
- * is initialized to null. Then it increments *ppa.
+/* internal fillvpa - This is a helper function called by
+ * eiter to initialize an array of struct VPth objects.
+ * The x fields are set to elements of the environment and
+ * the p fields are set to 0.
  */
 static void
 fillvpa(char *x, struct Term *t, void *ppa)
