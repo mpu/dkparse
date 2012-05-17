@@ -172,7 +172,7 @@ main(int argc, char **argv)
 			fprintf(stderr, "Cannot open %s.\n", *argv);
 			continue;
 		}
-		printf("Parsing %s.\n", *argv);
+		fprintf(stderr, "Parsing %s.\n", *argv);
 		while (yyparse()==0);
 		fclose(f);
 	}
