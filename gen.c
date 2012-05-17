@@ -273,7 +273,7 @@ comprs(struct PMat pm)
 			break;
 	if (c==pm.c) {
 		emit("return ");
-		gcode(pm.rhs[0]);
+		gterm(pm.rhs[0]);
 		return;
 	}
 
@@ -374,6 +374,9 @@ gname(enum NameType nt, char *x)
 	return s;
 }
 
+/* internal gcode - Emit an expression representing the dynamic
+ * translation of a term in the lambda-Pi calculus.
+ */
 static void
 gcode(struct Term *t)
 {
@@ -425,6 +428,9 @@ gcode(struct Term *t)
 	}
 }
 
+/* internal gterm - Emit an expression representing the static
+ * translation of a term in the lambda-Pi calculus.
+ */
 static void
 gterm(struct Term *t)
 {
@@ -444,7 +450,7 @@ gterm(struct Term *t)
 	case Pi:
 		emit("{ tk = tpi; tpi = { ");
 		if (t->upi.ty->typ==Var)
-			emit(gname(C, t->upi.ty->uvar));
+			emit("%s", gname(C, t->upi.ty->uvar));
 		else {
 			emit("chkabs(");
 			gterm(t->upi.ty);
