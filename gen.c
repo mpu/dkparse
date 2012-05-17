@@ -239,25 +239,25 @@ pmdef(struct PMat m, int c)
  * representation.
  */
 
-/* enum NameType - Specify the name type that must be generated
+/* enum NameKind - Specify the name kind that must be generated
  * for a variable, C means 'Code' and T means 'Term'. This is
  * used to call the gname function.
  */
-enum NameType { C, T };
+enum NameKind { C, T };
 
-static char *gname(enum NameType, char *);
+static char *gname(enum NameKind, char *);
 static void gterm(struct Term *);
 static void gcode(struct Term *);
 
 /* ------------- Rule set compiling. ------------- */
 
-/* internal comprs - Compile a rule set following a pattern
+/* internal grules - Compile a rule set following a pattern
  * matching algorithm described in a paper by Luc Maranget:
  *
  *   Compiling Pattern Matching to Good Decision Trees, ML'08.
  */
 static void
-comprs(struct PMat pm)
+grules(struct PMat pm)
 {
 	int i, c;
 	struct Pat *p;
@@ -279,20 +279,20 @@ comprs(struct PMat pm)
 	p=&pm.m[0][c];
 	emit("if %s then\n", p->c);
 	m=pmspec(pm, p->c, p->ar, c);
-	comprs(m);
+	grules(m);
 
 	for (i=1; i<pm.r; i++) {
 		p=&pm.m[i][c];
 		if (p->ar>=0) {
 			emit("\nelseif %s then\n", p->c);
 			m=pmspec(pm, p->c, p->ar, c);
-			comprs(m);
+			grules(m);
 		}
 	}
 
 	emit("\nelse\n");
 	m=pmdef(pm, c);
-	comprs(m);
+	grules(m);
 	emit("\nend\n");
 }
 
@@ -311,33 +311,34 @@ fillvpa(char *x, struct Term *t, void *ppa)
 	(*pp)++;
 }
 
-/* genrules - Generate code associated to a rule set.
+/* genrules - Generate code to type check a rule set.
  */
 void
 genrules(struct RSet *rs)
 {
-	int i;
-	struct VPth *ppa, **vpa=dkalloc(rs->i*sizeof *vpa);
-	int *esz=dkalloc(rs->i*sizeof *esz);
+	int i, *esz;
+	struct VPth *ppa, **vpa;
 	struct PMat pm;
 
+	vpa=dkalloc(rs->i*sizeof *vpa);
+	esz=dkalloc(rs->i*sizeof *esz);
 	for (i=0; i<rs->i; i++) {
 		esz[i]=elen(rs->s[i].e);
 		if (!esz[i]) {
 			vpa[i]=0;
 			continue;
 		}
-		ppa=vpa[i]=dkalloc(elen(rs->s[i].e)*sizeof *vpa[i]);
+		ppa=vpa[i]=dkalloc(esz[i]*sizeof *vpa[i]);
 		eiter(rs->s[i].e, fillvpa, &ppa);
 	}
 
-	if (rs->ar>0) {
-		emit("--[[ Compiling rules for %s. ]]\n", rs->x);
-		pm=pmnew(rs, vpa);
-		comprs(pm);
-		emit("\n");
+	if (rs->ar==0) {
+		return;
 	}
-	return;
+	emit("--[[ Compiling rules for %s. ]]\n", rs->x);
+	pm=pmnew(rs, vpa);
+	grules(pm);
+	emit("\n");
 }
 
 /* ------------- Declaration compiling. ------------- */
@@ -359,7 +360,7 @@ genrules(struct RSet *rs)
  * Warning, this returns a static buffer.
  */
 static inline char *
-gname(enum NameType nt, char *x)
+gname(enum NameKind nt, char *x)
 {
 	static char s[MAXID];
 
