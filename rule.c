@@ -178,7 +178,7 @@ rchk(void)
 	struct Term *t;
 
 	assert(rs.i>0);
-	ar.i=vr.i=0;
+	ar.i=0;
 
 	rs.ar=napps(rs.s[0].l, &t);
 	if (t->typ!=Var)
@@ -187,8 +187,7 @@ rchk(void)
 
 	if (rs.ar==0 && rs.i!=1)
 		fail("%s: A constant must not have more than"
-		     " one rewrite rule.\n"
-		     ,__func__);
+		     " one rewrite rule.\n", __func__);
 
 	for (r=0; r<rs.i; r++) {
 		if (escope(rs.s[r].e))
@@ -198,7 +197,7 @@ rchk(void)
 			fail("%s: Head symbol must not be in environment.\n"
 			     ,__func__);
 
-		for (t=rs.s[r].l, a=0; t->typ==App; t=t->uapp.t1, a++) {
+		for (t=rs.s[r].l, vr.i=a=0; t->typ==App; t=t->uapp.t1, a++) {
 			if (chklhs(rs.s[r].e, t->uapp.t2))
 				goto err;
 		}
@@ -209,8 +208,7 @@ rchk(void)
 
 		if (t->typ!=Var || t->uvar!=rs.x)
 			fail("%s: All rewrite rules must have the same"
-			     " head constant.\n"
-			     ,__func__);
+			     " head constant.\n", __func__);
 		if (a!=rs.ar)
 			fail("%s: All rules must have the same arity.\n"
 			     ,__func__);
