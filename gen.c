@@ -6,15 +6,22 @@
 
 /* ------------- Pattern compilation. ------------- */
 
+/* MAXPDPTH - The maximum depth of a pattern.
+ */
+#define MAXPDPTH 32
+
 /* struct Pat - Patterns are constructors applied to
  * a list of other patterns.
+ * The loc field is a 0 terminated array of integers
+ * representing the path where the constructor is located
+ * in the pattern.
  * As a convention, if ar is negative, the pattern is
  * a variable, if c is null, then it is a non-failing
  * pattern (a wildcard).
  */
 struct Pat {
 	char *c;
-	int ar;
+	int ar, *loc;
 	struct Pat *ps;
 };
 
@@ -25,10 +32,6 @@ struct PMat {
 	struct Term **rhs;
 	int r, c;
 };
-
-/* MAXPDPTH - The maximum depth of a pattern.
- */
-#define MAXPDPTH 32
 
 /* struct VPth - Associate a pattern variable to its path.
  * The path must be 0 terminated.
@@ -50,10 +53,12 @@ static int ploc[MAXPDPTH];
 static struct Env *re;
 static struct VPth *rvp;
 
-/* internal vsetpath - Bind one variable to the current path.
+/* internal duppath - Duplicate the current path and return it.
+ * The returned path will be a 0 terminated array of dpth+1
+ * elements.
  */
-static void
-vsetpath(int dpth, char *x)
+static int *
+duppath(int dpth)
 {
 	int *p=dkalloc((dpth+1)*sizeof *p);
 	int i;
@@ -61,10 +66,20 @@ vsetpath(int dpth, char *x)
 	for (i=0; i<dpth; i++)
 		p[i]=ploc[i];
 	p[i]=0;
+	return p;
+}
+
+/* internal vsetpath - Bind one variable to the current path.
+ */
+static void
+vsetpath(int dpth, char *x)
+{
+	int i;
+
 	for (i=0; rvp[i].x!=x; i++)
 		;
 	assert(!rvp[i].p);
-	rvp[i].p=p;
+	rvp[i].p=duppath(dpth);
 	return;
 }
 
@@ -79,7 +94,7 @@ pat(int dpth, struct Pat *p, struct Term *t)
 {
 	int i;
 
-	if (dpth>=MAXPDPTH-1) {
+	if (dpth>=MAXPDPTH) {
 		fprintf(stderr, "%s: Maximum pattern depth exceeded.\n"
 		                "\tThe maximum is %d.\n", __func__, MAXPDPTH);
 		exit(1); // FIXME
@@ -88,14 +103,16 @@ pat(int dpth, struct Pat *p, struct Term *t)
 		vsetpath(dpth, t->uvar);
 		p->ps=0;
 		p->ar=-1;
+		p->loc=0;
 		p->c=t->uvar;
 	} else {
 		p->ar=napps(t, 0);
 		p->ps=dkalloc(p->ar*sizeof *p->ps);
 		for (i=p->ar-1; i>=0; i--, t=t->uapp.t1) {
-			ploc[dpth+1]=i;
+			ploc[dpth]=i+1;
 			pat(dpth+1, &p->ps[i], t->uapp.t2);
 		}
+		p->loc=duppath(dpth);
 		assert(t->typ==Var);
 		p->c=t->uvar;
 	}
@@ -124,8 +141,8 @@ pmnew(struct RSet *rs, struct VPth *vpa[])
 		rvp=vpa[i];
 		re=rs->s[i].e;
 		for (n=m.c-1, t=rs->s[i].l; n>=0; n--, t=t->uapp.t1) {
-			ploc[0]=n;
-			pat(0, &m.m[i][n], t->uapp.t2);
+			ploc[0]=n+1;
+			pat(1, &m.m[i][n], t->uapp.t2);
 		}
 	}
 	return m;
@@ -181,6 +198,7 @@ pmspec(struct PMat m, char *x, int ar, int c)
 			for (j=0; j<ar; j++) {
 				n.m[i][c+j].c=0;
 				n.m[i][c+j].ar=-1;
+				n.m[i][c+j].loc=0;
 				n.m[i][c+j].ps=0;
 			}
 			memcpy(n.m[i]+c+ar, ps+c+1, (n.c-c-ar)*spat);
@@ -251,6 +269,31 @@ static void gcode(struct Term *);
 
 /* ------------- Rule set compiling. ------------- */
 
+/* internal gcond - Generates the condition of if statements
+ * that guard an entry in the decision tree.
+ */
+static void
+gcond(int *path, char *c)
+{
+	int i, j;
+
+	emit("if ");
+	for (i=0; i<2; i++) {
+		emit("y%d", path[0]);
+		for (j=1; path[j]; j++)
+			emit(".args[%d]", path[j]);
+		switch (i) {
+		case 0:
+			emit(".ck == ccon and ");
+			break;
+		case 1:
+			emit(".ccon == \"%s\" ", c);
+			break;
+		}
+	}
+	emit("then\n");
+}
+
 /* internal grules - Compile a rule set following a pattern
  * matching algorithm described in a paper by Luc Maranget:
  *
@@ -272,19 +315,20 @@ grules(struct PMat pm)
 			break;
 	if (c==pm.c) {
 		emit("return ");
-		gterm(pm.rhs[0]);
+		gcode(pm.rhs[0]);
 		return;
 	}
 
 	p=&pm.m[0][c];
-	emit("if %s then\n", p->c);
+	gcond(p->loc, p->c);
 	m=pmspec(pm, p->c, p->ar, c);
 	grules(m);
 
 	for (i=1; i<pm.r; i++) {
 		p=&pm.m[i][c];
 		if (p->ar>=0) {
-			emit("\nelseif %s then\n", p->c);
+			emit("\nelse");
+			gcond(p->loc, p->c);
 			m=pmspec(pm, p->c, p->ar, c);
 			grules(m);
 		}
