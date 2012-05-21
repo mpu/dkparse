@@ -61,12 +61,15 @@ function conv(n, a, b)
     return conv(n+1, ap(a, v), ap(b, v));
   elseif a.ck == ccon and b.ck == ccon
      and a.ccon == b.ccon and #a.args == #b.args then
-    for i=1,#a.args do
+    if #a.args == 0 then
+      return true;
+    end
+    for i=1,#a.args-1 do
       if not conv(n, a.args[i], b.args[i]) then
         return false;
       end
     end
-    return true;
+    return conv(n, a.args[#a.args], b.args[#b.args]);
   elseif a.ck == ctype and b.ck == ctype then
     return true;
   elseif a.ck == ckind and b.ck == ckind then
