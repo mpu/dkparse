@@ -453,7 +453,10 @@ genrules(struct RSet *rs)
 		emit("chk(");
 		gterm(rs->s[0].r);
 		emit(", %s.tbox[1])\n", gname(T, rs->x));
-		emit("chkend(\"definition of %s\")\n\n", rs->x);
+		emit("chkend(\"definition of %s\")\n", rs->x);
+		emit("%s = ", gname(C, rs->x));
+		gcode(rs->s[0].r);
+		emit("\n\n");
 		return;
 	}
 	emit("--[[ Type checking rules of %s. ]]\n", rs->x);
