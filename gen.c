@@ -175,7 +175,7 @@ pmspec(struct PMat m, char *x, int ar, int c)
 	}
 	n.rhs=dkalloc(n.r*sizeof *n.m);
 	for (k=i=0; i<n.r; k++)
-		if (m.m[k][c].c==x || m.m[i][c].ar<0)
+		if (m.m[k][c].c==x || m.m[k][c].ar<0)
 			n.rhs[i++]=m.rhs[k];
 	if (n.c==0) {
 		n.m=0;
@@ -230,7 +230,7 @@ pmdef(struct PMat m, int c)
 	}
 	n.rhs=dkalloc(n.r*sizeof *n.m);
 	for (k=i=0; i<n.r; k++)
-		if (m.m[i][c].ar<0)
+		if (m.m[k][c].ar<0)
 			n.rhs[i++]=m.rhs[k];
 	if (n.c==0) {
 		n.m=0;
@@ -241,7 +241,8 @@ pmdef(struct PMat m, int c)
 	for (k=i=0; i<n.r; k++)
 		if (m.m[k][c].ar<0) {
 			n.m[i]=dkalloc(n.c*spat);
-			memcpy(n.m[i], m.m[k]+1, n.c*spat);
+			memcpy(n.m[i], m.m[k], c*spat);
+			memcpy(n.m[i]+c, m.m[k]+c+1, (n.c-c)*spat);
 			i++;
 		}
 	return n;
@@ -337,7 +338,7 @@ grules(struct PMat pm)
 	emit("\nelse\n");
 	m=pmdef(pm, c);
 	grules(m);
-	emit("\nend\n");
+	emit("\nend");
 }
 
 /* internal fillvpa - This is a helper function called by
@@ -382,7 +383,7 @@ genrules(struct RSet *rs)
 	emit("--[[ Compiling rules for %s. ]]\n", rs->x);
 	pm=pmnew(rs, vpa);
 	grules(pm);
-	emit("\n");
+	emit("\n\n");
 }
 
 /* ------------- Declaration compiling. ------------- */
