@@ -12,6 +12,6 @@ dotpi3 : x : Ukind -> (ekind x -> Utype) -> Utype.
 [x:Ukind, y : ekind x -> Utype]
                   etype ((dotpi3 x) y) --> w : ekind x -> etype (y w).
 
-a : x : Utype -> etype x -> etype x.
+a : x : Utype -> etype (dotpi1 x (_ => x)).
 
 [] a --> x : Utype => y : etype x => y.
