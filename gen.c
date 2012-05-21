@@ -29,7 +29,7 @@ struct Pat {
  */
 struct PMat {
 	struct Pat **m;
-	struct Term **rhs;
+	int *rs;
 	int r, c;
 };
 
@@ -133,11 +133,11 @@ pmnew(struct RSet *rs, struct VPth *vpa[])
 	m.r=rs->i;
 	m.c=rs->ar;
 	m.m=dkalloc(m.r*sizeof *m.m);
-	m.rhs=dkalloc(m.r*sizeof *m.rhs);
+	m.rs=dkalloc(m.r*sizeof *m.rs);
 
 	for (i=0; i<m.r; i++) {
 		m.m[i]=dkalloc(m.c*sizeof *m.m[i]);
-		m.rhs[i]=rs->s[i].r;
+		m.rs[i]=i;
 		rvp=vpa[i];
 		re=rs->s[i].e;
 		for (n=m.c-1, t=rs->s[i].l; n>=0; n--, t=t->uapp.t1) {
@@ -169,14 +169,14 @@ pmspec(struct PMat m, char *x, int ar, int c)
 	}
 	n.c=m.c-1+ar;
 	if (n.r==0) {
-		n.rhs=0;
+		n.rs=0;
 		n.m=0;
 		return n;
 	}
-	n.rhs=dkalloc(n.r*sizeof *n.m);
+	n.rs=dkalloc(n.r*sizeof *n.rs);
 	for (k=i=0; i<n.r; k++)
 		if (m.m[k][c].c==x || m.m[k][c].ar<0)
-			n.rhs[i++]=m.rhs[k];
+			n.rs[i++]=m.rs[k];
 	if (n.c==0) {
 		n.m=0;
 		return n;
@@ -224,14 +224,14 @@ pmdef(struct PMat m, int c)
 			n.r++;
 	n.c=m.c-1;
 	if (n.r==0) {
-		n.rhs=0;
+		n.rs=0;
 		n.m=0;
 		return n;
 	}
-	n.rhs=dkalloc(n.r*sizeof *n.m);
+	n.rs=dkalloc(n.r*sizeof *n.rs);
 	for (k=i=0; i<n.r; k++)
 		if (m.m[k][c].ar<0)
-			n.rhs[i++]=m.rhs[k];
+			n.rs[i++]=m.rs[k];
 	if (n.c==0) {
 		n.m=0;
 		return n;
@@ -270,19 +270,44 @@ static void gcode(struct Term *);
 
 /* ------------- Rule set compiling. ------------- */
 
+/* internal crs - This variable stores the rule set currently
+ * being compiled.
+ */
+struct RSet *crs;
+
+/* internal vpa esz - The vpa array stores variable, path
+ * bindings for each branch of the pattern matching (each
+ * rule of the rule set. The integer esz[i] is the length
+ * of the array vpa[i] (the number of pattern variables for
+ * the rule i).
+ */
+struct VPth **vpa;
+int *esz;
+
+/* internal gpath - Generate the expression to access
+ * the object stored in the given path.
+ */
+static inline void
+gpath(int *path)
+{
+	int i;
+
+	emit("y%d", path[0]);
+	for (i=1; path[i]; i++)
+		emit(".args[%d]", path[i]);
+}
+
 /* internal gcond - Generates the condition of if statements
  * that guard an entry in the decision tree.
  */
 static void
 gcond(int *path, char *c)
 {
-	int i, j;
+	int i;
 
 	emit("if ");
 	for (i=0; i<2; i++) {
-		emit("y%d", path[0]);
-		for (j=1; path[j]; j++)
-			emit(".args[%d]", path[j]);
+		gpath(path);
 		switch (i) {
 		case 0:
 			emit(".ck == ccon and ");
@@ -295,6 +320,30 @@ gcond(int *path, char *c)
 	emit("then\n");
 }
 
+/* internal glocals - Generate the binding list local to the
+ * rule i.
+ */
+static void
+glocals(int i)
+{
+	int v;
+
+	assert(i<crs->i);
+	if (esz[i]==0)
+		return;
+	emit("local ");
+	emit("%s", gname(C, vpa[i][0].x));
+	for (v=1; v<esz[i]; v++)
+		emit(", %s", gname(C, vpa[i][v].x));
+	emit(" = ");
+	gpath(vpa[i][0].p);
+	for (v=1; v<esz[i]; v++) {
+		emit(", ");
+		gpath(vpa[i][v].p);
+	}
+	emit("\n");
+}
+
 /* internal grules - Compile a rule set following a pattern
  * matching algorithm described in a paper by Luc Maranget:
  *
@@ -303,20 +352,24 @@ gcond(int *path, char *c)
 static void
 grules(struct PMat pm)
 {
-	int i, c;
+	int i, c, sep;
 	struct Pat *p;
 	struct PMat m;
 
 	if (pm.r==0) {
-		emit("--[[ FIXME ]]");
+		emit("return { ck = ccon, ccon = \"%s\", args = { ", crs->x);
+		for (sep=0, i=1; i<=crs->ar; i++, sep=1)
+			emit(sep ? ", y%d" : "y%d", i);
+		emit(" } }");
 		return;
 	}
 	for (c=0; c<pm.c; c++)
 		if (pm.m[0][c].ar>=0)
 			break;
 	if (c==pm.c) {
+		glocals(pm.rs[0]);
 		emit("return ");
-		gcode(pm.rhs[0]);
+		gcode(crs->s[pm.rs[0]].r);
 		return;
 	}
 
@@ -327,18 +380,34 @@ grules(struct PMat pm)
 
 	for (i=1; i<pm.r; i++) {
 		p=&pm.m[i][c];
-		if (p->ar>=0) {
-			emit("\nelse");
-			gcond(p->loc, p->c);
-			m=pmspec(pm, p->c, p->ar, c);
-			grules(m);
-		}
+		if (p->ar<0)
+			continue;
+		emit("\nelse");
+		gcond(p->loc, p->c);
+		m=pmspec(pm, p->c, p->ar, c);
+		grules(m);
 	}
 
 	emit("\nelse\n");
 	m=pmdef(pm, c);
 	grules(m);
 	emit("\nend");
+}
+
+/* internal gchkenv - Generate code to type check a binding
+ * of a rewrite rule's environment.
+ */
+static void
+gchkenv(char *x, struct Term *t, void *unused)
+{
+	emit("chkbeg(\"%s\")\n", x);
+	emit("chksort(");
+	gterm(t);
+	emit(")\n%s = { ck = ccon, ccon = \"%s\", args = { } }\n", gname(C, x), x);
+	emit("%s = { tk = tbox, tbox = { ", gname(T, x));
+	gcode(t);
+	emit(", %s } }\n", gname(C, x));
+	emit("chkend(\"%s\")\n", x);
 }
 
 /* internal fillvpa - This is a helper function called by
@@ -361,10 +430,11 @@ fillvpa(char *x, struct Term *t, void *ppa)
 void
 genrules(struct RSet *rs)
 {
-	int i, *esz;
-	struct VPth *ppa, **vpa;
+	int i, v;
+	struct VPth *ppa;
 	struct PMat pm;
 
+	crs=rs;
 	vpa=dkalloc(rs->i*sizeof *vpa);
 	esz=dkalloc(rs->i*sizeof *esz);
 	for (i=0; i<rs->i; i++) {
@@ -378,15 +448,48 @@ genrules(struct RSet *rs)
 	}
 
 	if (rs->ar==0) {
+		emit("--[[ Type checking the definition of %s. ]]\n", rs->x);
+		emit("chkbeg(\"definition of %s\")\n", rs->x);
+		emit("chk(");
+		gterm(rs->s[0].r);
+		emit(", %s.tbox[1])\n", gname(T, rs->x));
+		emit("chkend(\"definition of %s\")\n\n", rs->x);
 		return;
 	}
-	emit("--[[ Compiling rules for %s. ]]\n", rs->x);
+	emit("--[[ Type checking rules of %s. ]]\n", rs->x);
+	emit("function check_rules()\nchkbeg(\"rules of %s\")\n", rs->x);
+	for (i=0; i<rs->i; i++) {
+		emit("chkbeg(\"rule %d\")", i+1);
+		eiter(rs->s[i].e, gchkenv, 0);
+		emit("do\nlocal ty = synth(0, ");
+		gterm(rs->s[i].l);
+		emit(")\nchk(");
+		gterm(rs->s[i].r);
+		emit(", ty)\nend\nchkend(\"rule %d\")\n", i+1);
+	}
+	emit("chkend(\"rules of %s\")\nend\ncheck_rules()\n", rs->x);
+	emit("--[[ Compiling rules of %s. ]]\n", rs->x);
+	emit("%s = { ck = clam, arity = %d, args = { }, clam =\n", gname(C, rs->x), rs->ar);
+	emit("function (y1");
+	for (i=2; i<=rs->ar; i++)
+		emit(", y%d", i);
+	emit(")\n");
 	pm=pmnew(rs, vpa);
 	grules(pm);
-	emit("\n\n");
+	emit("\nend }\n\n");
 }
 
 /* ------------- Declaration compiling. ------------- */
+
+/* gendecl - Generate code to type check a declaration.
+ */
+void
+gendecl(char *x, struct Term *t)
+{
+	emit("--[[ Type checking %s. ]]\n", x);
+	gchkenv(x, t, 0);
+	emit("\n");
+}
 
 /* ------------- Term compiling. ------------- */
 

@@ -45,8 +45,9 @@ rules: rule
 decl: ID ':' term {
 	if (scope($3, 0)) {
 		fprintf(stderr, "%s: Scope error in type of %s.\n", __func__, $1);
-		exit(1);
+		exit(1); // FIXME
 	}
+	gendecl($1, $3);
 	pushscope($1);
 };
 
