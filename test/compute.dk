@@ -6,7 +6,7 @@ S : Nat -> Nat.
 
 plus : Nat -> Nat -> Nat.
 [x:Nat]        plus Z x --> x
-[x:Nat, y:Nat] plus (S x) y --> S (plus x y).
+[x:Nat, y:Nat] plus (S x) y --> plus x (S y).
 
 mult : Nat -> Nat -> Nat.
 [x:Nat]        mult Z x --> Z
@@ -16,10 +16,10 @@ fact : Nat -> Nat.
 []      fact Z --> S Z
 [x:Nat] fact (S x) --> mult (S x) (fact x).
 
-seven : Nat.
-[] seven --> S (S (S (S (S (S (S Z)))))).
+eight : Nat.
+[] eight --> S (S (S (S (S (S (S (S Z))))))).
 
 I : Nat -> Type.
 
-test : I (fact seven) -> I (fact seven).
+test : I (fact eight) -> I (fact eight).
 [] test --> x => x.
