@@ -462,7 +462,7 @@ genrules(struct RSet *rs)
 	emit("--[[ Type checking rules of %s. ]]\n", rs->x);
 	emit("function check_rules()\nchkbeg(\"rules of %s\")\n", rs->x);
 	for (i=0; i<rs->i; i++) {
-		emit("chkbeg(\"rule %d\")", i+1);
+		emit("chkbeg(\"rule %d\")\n", i+1);
 		eiter(rs->s[i].e, gchkenv, 0);
 		emit("do\nlocal ty = synth(0, ");
 		gterm(rs->s[i].l);
