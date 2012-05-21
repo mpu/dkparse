@@ -84,10 +84,9 @@ vsetpath(int dpth, char *x)
 }
 
 /* internal pat - Create a pattern corresponding to the
- * input term, variables in the provided environment are
- * seen as pattern variables. The dpth argument is used
- * to keep track of the current depth while browsing the
- * pattern.
+ * input term, variables in the re environment are seen
+ * as pattern variables. The dpth argument is used to keep
+ * track of the current depth while browsing the pattern.
  */
 static void
 pat(int dpth, struct Pat *p, struct Term *t)
@@ -120,7 +119,7 @@ pat(int dpth, struct Pat *p, struct Term *t)
 
 /* internal pmnew - Create a new pattern matrix corresponding
  * to a set of rewrite rules. It also fills the vpa array with
- * proper paths for each variable occuring in the pattern.
+ * proper paths for each variable occuring in a pattern.
  */
 static struct PMat
 pmnew(struct RSet *rs, struct VPth *vpa[])
@@ -208,7 +207,7 @@ pmspec(struct PMat m, char *x, int ar, int c)
 	return n;
 }
 
-/* internal pmdef - Default a pattern matrix.
+/* internal pmdef - Create a default a pattern matrix.
  * The index given specifies the column to be specialized.
  */
 static struct PMat
@@ -277,7 +276,7 @@ struct RSet *crs;
 
 /* internal vpa esz - The vpa array stores variable, path
  * bindings for each branch of the pattern matching (each
- * rule of the rule set. The integer esz[i] is the length
+ * rule of the rule set). The integer esz[i] is the length
  * of the array vpa[i] (the number of pattern variables for
  * the rule i).
  */
@@ -285,7 +284,7 @@ struct VPth **vpa;
 int *esz;
 
 /* internal gpath - Generate the expression to access
- * the object stored in the given path.
+ * the object stored at the given path.
  */
 static inline void
 gpath(int *path)
@@ -297,7 +296,7 @@ gpath(int *path)
 		emit(".args[%d]", path[i]);
 }
 
-/* internal gcond - Generates the condition of if statements
+/* internal gcond - Generate the condition of if statements
  * that guard an entry in the decision tree.
  */
 static void
@@ -344,8 +343,9 @@ glocals(int i)
 	emit("\n");
 }
 
-/* internal grules - Compile a rule set following a pattern
- * matching algorithm described in a paper by Luc Maranget:
+/* internal grules - Compile a rule set following the pattern
+ * matching compilation algorithm described in a paper by
+ * Luc Maranget:
  *
  *   Compiling Pattern Matching to Good Decision Trees, ML'08.
  */
@@ -394,7 +394,7 @@ grules(struct PMat pm)
 	emit("\nend");
 }
 
-/* internal gchkenv - Generate code to type check a binding
+/* internal gchkenv - Generate code to type check one binding
  * of a rewrite rule's environment.
  */
 static void
@@ -551,7 +551,7 @@ gcode(struct Term *t)
 			lams[s]=t->ulam.x;
 			t=t->ulam.t;
 		}
-		emit("{ ck = clam, arity = %d, args = {}, clam = function (", s);
+		emit("{ ck = clam, arity = %d, args = { }, clam = function (", s);
 		for (i=0; i<s-1; i++)
 			emit("%s, ", gname(C, lams[i]));
 		emit("%s) return ", gname(C, lams[i]));
@@ -587,6 +587,7 @@ static void
 gterm(struct Term *t)
 {
 	char *x;
+
 /* tail: */
 	switch (t->typ) {
 	case Var:
