@@ -120,7 +120,7 @@ lex(void)
 		}
 		return c; /* This is an error. */
 	}
-	for (l=0; istoken(c) || (c=='.' && istoken(peek(f))); l++) {
+	for (l=0; c!=EOF && (istoken(c) || (c=='.' && istoken(peek(f)))); l++) {
 		if (l>=TOKLEN-1) {
 			fputs("Maximum token length exceeded.\n", stderr);
 			exit(1);
