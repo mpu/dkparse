@@ -302,21 +302,11 @@ gpath(int *path)
 static void
 gcond(int *path, char *c)
 {
-	int i;
-
 	emit("if ");
-	for (i=0; i<2; i++) {
-		gpath(path);
-		switch (i) {
-		case 0:
-			emit(".ck == ccon and ");
-			break;
-		case 1:
-			emit(".ccon == \"%s\" ", c);
-			break;
-		}
-	}
-	emit("then\n");
+	gpath(path);
+	emit(".ck == ccon and ");
+	gpath(path);
+	emit(".ccon == \"%s\" then\n", c);
 }
 
 /* internal glocals - Generate the binding list local to the
