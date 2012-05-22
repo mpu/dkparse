@@ -88,11 +88,16 @@ static int
 skipspaces(FILE *f)
 {
 	int c;
-	while ((c=fgetc(f))!=EOF && isspace(c));
-	return c;
+	while (1) {
+		while ((c=fgetc(f))!=EOF && isspace(c));
+		if (c!='(' || peek(f)!=';')
+			return c;
+		while ((fgetc(f)!=';' || peek(f)!=')') && !feof(f));
+		fgetc(f); /* Drop trailing ')'. */
+	}
 }
 
-#define isspecial(c) (c=='[' || c==']' || c==',' || c=='.' || c==':' || c=='(' || c==')')
+#define istoken(c) (isalnum(c) || c=='_' || c=='\'')
 static int
 lex(void)
 {
@@ -100,33 +105,35 @@ lex(void)
 	int l, c;
 
 	c=skipspaces(f);
-	if (c=='(' && peek(f)==';') {
-		while ((fgetc(f)!=';' || peek(f)!=')') && !feof(f));
-		fgetc(f); /* Drop trailing ')'. */
-		c=skipspaces(f);
-	}
 	if (c==EOF)
 		return 0;
-	if (isspecial(c))
+	if (c=='[' || c==']' || c==',' || c=='.' || c==':' || c=='(' || c==')')
 		return c;
-	l=0;
-	do {
+	if (c=='-' || c=='=') {
+		switch (fgetc(f)) {
+		case '>':
+			return c=='-' ? ARROW : FATARROW;
+		case '-':
+			if (c=='-' && fgetc(f)=='>')
+				return LONGARROW;
+			break;
+		}
+		return c; /* This is an error. */
+	}
+	for (l=0; istoken(c) || (c=='.' && istoken(peek(f))); l++) {
 		if (l>=TOKLEN-1) {
 			fputs("Maximum token length exceeded.\n", stderr);
 			exit(1);
 		}
-		tok[l++]=c;
+		tok[l]=c;
 		c=fgetc(f);
-	} while ((!isspace(c) && !isspecial(c)) || (c=='.' && !isspace(peek(f))));
-	ungetc(c, f);
+	}
 	tok[l]=0;
-	     if (!strcmp(tok, "->"))
-		return ARROW;
-	else if (!strcmp(tok, "=>"))
-		return FATARROW;
-	else if (!strcmp(tok, "-->"))
-		return LONGARROW;
-	else if (!strcmp(tok, "Type"))
+	if (!l)
+		return c; /* This is an error. */
+	if (c!=EOF)
+		ungetc(c, f); /* Push back last char. */
+	if (!strcmp(tok, "Type"))
 		return TYPE;
 	yylval.id=astrdup(tok);
 	return ID;
