@@ -173,7 +173,7 @@ chkenv(char *x, struct Term *t, void *peerr)
 static int
 rchk(void)
 {
-#define fail(...) do { fprintf(stderr, __VA_ARGS__); goto err; } while (0)
+#define fail(...) do { fprintf(stderr, __VA_ARGS__); return 1; } while (0)
 	int r, a, eerr;
 	struct Term *t;
 
@@ -194,19 +194,19 @@ rchk(void)
 			fail("%s: Environment is not properly scoped.\n"
 			     ,__func__);
 		if (scope(rs.s[r].l, rs.s[r].e) || scope(rs.s[r].r, rs.s[r].e))
-			goto err;
+			return 1;
 		if (eget(rs.s[r].e, rs.x))
 			fail("%s: Head symbol must not be in environment.\n"
 			     ,__func__);
 
 		for (t=rs.s[r].l, vr.i=a=0; t->typ==App; t=t->uapp.t1, a++) {
 			if (chklhs(rs.s[r].e, t->uapp.t2))
-				goto err;
+				return 1;
 		}
 		eerr=0;
 		eiter(rs.s[r].e, chkenv, &eerr);
 		if (eerr)
-			goto err;
+			return 1;
 
 		if (t->typ!=Var || t->uvar!=rs.x)
 			fail("%s: All rewrite rules must have the same"
@@ -216,8 +216,6 @@ rchk(void)
 			     ,__func__);
 	}
 	return 0;
-err:
-	return 1;
 #undef fail
 }
 
