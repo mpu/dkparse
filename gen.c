@@ -524,16 +524,24 @@ gendecl(char *x, struct Term *t)
 static inline char *
 gname(enum NameKind nt, char *x)
 {
-	static char s[MAXID];
+	static char s[MAXID], *p;
 
-	switch (nt) {
-	case C:
-		snprintf(s, MAXID, "%s_c", x);
-		break;
-	case T:
-		snprintf(s, MAXID, "%s_t", x);
-		break;
+	for (p=s; *x; x++, p++) {
+		if (p-s>=MAXID-4) {
+			fprintf(stderr, "%s: Maximum identifier length exceeded.\n"
+			                "\tThe maximum is %d.\n", __func__, MAXID);
+			exit(1);
+		}
+		if (*x=='x' || *x=='\'') {
+			*p++='x';
+			*p=*x=='\''?'q':*x;
+			continue;
+		}
+		*p=*x;
 	}
+	*p++='_';
+	*p++=nt==C?'c':'t';
+	*p=0;
 	return s;
 }
 
