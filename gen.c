@@ -249,11 +249,12 @@ pmdef(struct PMat m, int c)
 
 /* ------------- Code generation. ------------- */
 
-/* This code generation section is splitted in three parts,
- * the first compiles rule sets, the second, shorter,
- * compiles declarations, and the third provides utility
- * functions for the two first parts, it mostly deals with
- * the compilation of terms to their dynamic and static
+/* This code generation section is splitted in four parts, the
+ * first generate code to be added at the beginning of a
+ * module the second compiles rule sets, the third, shorter,
+ * compiles declarations, and the fourth provides utility
+ * functions for the others, it mostly deals with the
+ * compilation of terms to their dynamic and static
  * representation.
  */
 
@@ -266,6 +267,26 @@ enum NameKind { C, T };
 static char *gname(enum NameKind, char *);
 static void gterm(struct Term *);
 static void gcode(struct Term *);
+
+/* ------------- Module compiling. ------------- */
+
+/* genmod - Generate the code to prepend to a compiled module,
+ * it initializes the current module table.
+ */
+void
+genmod(void)
+{
+	const char *m, *p, *q;
+
+	q=m=mget();
+	emit("--[[ Code for module %s. ]]\n", m);
+	emit("local "); /* This line causes a 20% speedup. */
+	while ((p=strchr(q, '.'))) {
+		emit("%.*s = { }\n", (int)(p-m), m);
+		q=p+1;
+	}
+	emit("%s = { }\n\n", m);
+}
 
 /* ------------- Rule set compiling. ------------- */
 

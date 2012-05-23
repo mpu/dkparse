@@ -57,7 +57,10 @@ cons(char *s, struct L **l)
 	*l=car;
 }
 
-/* internal tscope -
+/* internal tscope - Check that a term is well scoped within
+ * the global environment and the local pe environment. This
+ * will also qualify all unbound names with the current module
+ * name.
  */
 static int
 tscope(struct Term *t, struct L *pe)
@@ -90,10 +93,11 @@ tail:
 		for (p=e; p; p=p->n)
 			if (p->s==t->uvar)
 				goto ret;
+		if (strchr(t->uvar, '.')) /* XXX Temporary hack to handle modules. */
+			goto ret;
+		t->uvar=mqual(t->uvar);
 		id.x=t->uvar;
 		if (avlget(&id, genv))
-			goto ret;
-		if (strchr(id.x, '.')) /* XXX Temporary hack to handle modules. */
 			goto ret;
 		fprintf(stderr, "%s: Variable %s is out of scope.\n", __func__, id.x);
 		r=1;
@@ -113,7 +117,7 @@ ret:
 }
 
 /* scope - Scope a term in the global environment plus the given
- * environment.
+ * environment, it will also qualify all names that appear unbound.
  */
 int
 scope(struct Term *t, struct Env *e)
@@ -255,7 +259,8 @@ elen(struct Env *e)
 
 /* escope - Check that an environment is well scoped.
  * If the environment is not properly scoped, 1 is returned,
- * otherwise, 0 is returned.
+ * otherwise, 0 is returned. If it succeeds, all name
+ * appearing unbound will be qualified.
  */
 int
 escope(struct Env *e)

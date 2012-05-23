@@ -74,5 +74,11 @@ int pushrule(struct Env *, struct Term *, struct Term *);
 void dorules(void);
 
 /* Module gen.c */
+void genmod(void);
 void genrules(struct RSet *);
 void gendecl(char *, struct Term *);
+
+/* Module module.c */
+int mset(char *);
+const char *mget(void);
+char *mqual(char *);

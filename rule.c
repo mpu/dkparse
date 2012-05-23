@@ -106,8 +106,8 @@ tget(struct Arr *a, char *x)
 
 /* internal chkrule - Checks that a given term in the left hand
  * side of a rule is valid. The environment provided is the
- * environment of the checked lhs. The balanced tree provided
- * contains mappings from constructors to arities.
+ * environment of the checked lhs. The number of uses of pattern
+ * variables is updated in the vr array.
  */
 static int
 chklhs(struct Env *e, struct Term *t)
@@ -183,7 +183,7 @@ rchk(void)
 	rs.ar=napps(rs.s[0].l, &t);
 	if (t->typ!=Var)
 		fail("%s: Head of the rule must be a constant.\n", __func__);
-	rs.x=t->uvar;
+	rs.x=mqual(t->uvar);
 
 	if (rs.ar==0 && rs.i!=1)
 		fail("%s: A constant must not have more than"
@@ -193,6 +193,8 @@ rchk(void)
 		if (escope(rs.s[r].e))
 			fail("%s: Environment is not properly scoped.\n"
 			     ,__func__);
+		if (scope(rs.s[r].l, rs.s[r].e) || scope(rs.s[r].r, rs.s[r].e))
+			goto err;
 		if (eget(rs.s[r].e, rs.x))
 			fail("%s: Head symbol must not be in environment.\n"
 			     ,__func__);
@@ -212,8 +214,6 @@ rchk(void)
 		if (a!=rs.ar)
 			fail("%s: All rules must have the same arity.\n"
 			     ,__func__);
-		if (scope(rs.s[r].l, rs.s[r].e) || scope(rs.s[r].r, rs.s[r].e))
-			goto err;
 	}
 	return 0;
 err:

@@ -1,4 +1,4 @@
-CFILES = lib/avl.c alloc.c term.c rule.c dkparse.tab.c scope.c gen.c
+CFILES = lib/avl.c alloc.c term.c rule.c dkparse.tab.c scope.c gen.c module.c
 OFILES = $(CFILES:.c=.o)
 
 dkparse: $(OFILES)
