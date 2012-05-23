@@ -145,7 +145,7 @@ local function shiftp(m)
 end
 
 function chkbeg(x)
-  shiftp("Checking \027[1m" .. x .. "\027[m...");
+  shiftp("Checking " .. x .. ".");
   indent = indent + 1;
 end
 
