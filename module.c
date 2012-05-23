@@ -34,7 +34,7 @@ copyto(char *s, char *f, char *t)
 		return 0;
 	}
 	while (f<t) {
-		if (!isalnum(*f) && *f!='_' && *f!=0)
+		if (!isalnum(*f) && *f!='_' && *f!='\'' && *f!=0)
 			goto err;
 		*s++=*f++;
 	}
