@@ -21,5 +21,4 @@ eight : Nat.
 
 I : Nat -> Type.
 
-test : I (fact eight) -> I (fact eight).
-[] test --> x => x.
+test : I (fact eight).
