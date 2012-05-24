@@ -40,7 +40,7 @@ copyto(char *s, char *f, char *t)
 	}
 	return s;
 err:
-	fprintf(stderr, "%s: Invalid char %c in module name.\n", __func__, *f);
+	fprintf(stderr, "%s: Invalid char %c in name.\n", __func__, *f);
 	return 0;
 }
 
