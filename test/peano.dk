@@ -4,7 +4,7 @@ nat : Type.
 
 [] nat --> coc.etype nat_.
 
-0 : nat.
+Z : nat.
 
 S : nat -> nat.
 
@@ -17,7 +17,7 @@ nat_rec : t : coc.Utype
 [ t : coc.Utype
 , a : coc.etype t
 , f : nat -> coc.etype t -> coc.etype t
-] nat_rec t a f 0 --> a
+] nat_rec t a f Z --> a
 
 [ t : coc.Utype
 , a : coc.etype t
@@ -26,11 +26,11 @@ nat_rec : t : coc.Utype
 ] nat_rec t a f (S n) --> f n (nat_rec t a f n).
 
 plus : nat -> nat -> nat.
-[] plus --> x : nat => y : nat => nat_rec nat_ 0 (x : nat => y : nat => y) x.
+[] plus --> x : nat => y : nat => nat_rec nat_ Z (x : nat => y : nat => y) x.
 
 plus2 : nat -> nat -> nat.
-[x : nat] plus2 x 0 --> x
-[x : nat] plus2 0 x --> x
+[x : nat] plus2 x Z --> x
+[x : nat] plus2 Z x --> x
 [x : nat, y : nat] plus2 x (S y) --> S (plus2 x y)
 [x : nat, y : nat] plus2 (S x) y --> S (plus2 x y).
 
@@ -50,10 +50,10 @@ eq_S2 : coc.etype (coc.dotpi1 nat_ (x : nat
 
 
 pred : nat -> nat.
-[] pred --> nat_rec nat_ 0 (x:nat => _:nat => x).
+[] pred --> nat_rec nat_ Z (x:nat => _:nat => x).
 
-pred2 :  nat -> nat.
-[] pred2 0 --> 0
+pred2 : nat -> nat.
+[] pred2 Z --> Z
 [x : nat] pred2 (S x) --> x.
 
 pred_Sn : n : nat -> logic.eq nat_ n (pred (S n)).
