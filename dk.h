@@ -54,6 +54,7 @@ struct Term *mkvar(char *);
 struct Term *mklam(char *, struct Term *);
 struct Term *mkpi(char *, struct Term *, struct Term *);
 int napps(struct Term *, struct Term **);
+int iskind(struct Term *);
 
 /* Module scope.c */
 struct Env;

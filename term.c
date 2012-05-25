@@ -66,3 +66,15 @@ napps(struct Term *t, struct Term **p)
 		*p=t;
 	return r;
 }
+
+/* iskind - Checks if a term is a kind, we can check this
+ * syntactically: the term is a kind if it is a succession
+ * of products ending on Type.
+ */
+int
+iskind(struct Term *t)
+{
+	while (t->typ==Pi)
+		t=t->upi.t;
+	return t==ttype;
+}

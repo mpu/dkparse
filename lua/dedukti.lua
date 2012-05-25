@@ -96,9 +96,6 @@ function synth(n, t)
     local c = synth(n, t.tapp[1]);
     assert(c.ck == cpi and check(n, t.tapp[2], c.cpi[1]));
     return c.cpi[2](t.tapp[3]);
-  elseif t.tk == tpi then
-    local v = var(n);
-    return synth(n+1, t.tpi[2](box(t.tpi[1], v), v));
   else
     error("Type synthesis failed.");
   end
@@ -109,6 +106,12 @@ function check(n, t, c)
   if t.tk == tlam and c.ck == cpi then
     local v = var(n);
     return check(n+1, t.tlam[2](box(c.cpi[1], v), v), c.cpi[2](v));
+  elseif t.tk == tpi then
+    if not check(n, t.tpi[1], { ck = ctype }) then
+      error("Type checking failed: Invalid product.");
+    end
+    local v = var(n);
+    return check(n+1, t.tpi[3](box(t.tpi[2], v), v), c);
   elseif t.tk == tlet then
     return check(n, t.tlet[3](t.tlet[1], t.tlet[2]), c);
   else
@@ -116,17 +119,14 @@ function check(n, t, c)
   end
 end
 
-function chkabs(t, c)
-  assert(t.tk, c.ck);
+function chktype(t)
   if not check(0, t, { ck = ctype }) then
     error("Type checking failed: Sort error.");
   end
-  return c;
 end
 
-function chksort(t)
-  local c = synth(0, t);
-  if c.ck ~= ctype and c.ck ~= ckind then
+function chkkind(t)
+  if not check(0, t, { ck = ckind }) then
     error("Type checking failed: Sort error.");
   end
 end

@@ -412,7 +412,7 @@ static void
 gchkenv(char *x, struct Term *t, void *unused)
 {
 	emit("chkbeg(\"%s\")\n", x);
-	emit("chksort(");
+	emit(iskind(t)?"chkkind(":"chktype(");
 	gterm(t);
 	emit(")\n%s = { ck = ccon, ccon = \"%s\", args = { } }\n", gname(C, x), x);
 	emit("%s = { tk = tbox, tbox = { ", gname(T, x));
@@ -621,15 +621,9 @@ gterm(struct Term *t)
 		break;
 	case Pi:
 		emit("{ tk = tpi; tpi = { ");
-		if (t->upi.ty->typ==Var)
-			emit("%s", gname(C, t->upi.ty->uvar));
-		else {
-			emit("chkabs(");
-			gterm(t->upi.ty);
-			emit(", ");
-			gcode(t->upi.ty);
-			emit(")");
-		}
+		gterm(t->upi.ty);
+		emit(", ");
+		gcode(t->upi.ty);
 		x = t->upi.x ? t->upi.x : "dkhole";
 		emit(", function (%s, ", gname(T, x));
 		emit("%s) return ", gname(C, x));
