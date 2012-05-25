@@ -5,7 +5,7 @@ dkparse: $(OFILES)
 	cc -p -o dkparse $(OFILES)
 
 dkparse.tab.c: dkparse.y dk.h
-	bison -v dkparse.y
+	bison dkparse.y
 
 .c.o:
 	cc -p -Wall -std=c99 -g -o $@ -c $<
