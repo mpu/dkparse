@@ -33,9 +33,9 @@
 %right ARROW FATARROW
 
 %%
-top: /* empty */ { YYABORT; }
-   | decl '.'    { dkfree(); YYACCEPT; }
-   | rules '.'   { dorules(); YYACCEPT; }
+top: /* empty */   { }
+   | top decl '.'  { dkfree(); }
+   | top rules '.' { dorules(); }
 ;
 
 rules: rule
@@ -165,7 +165,7 @@ yylex(void)
 static void
 yyerror(const char *m)
 {
-	printf("Yacc error, %s.\n", m);
+	fprintf(stderr, "Yacc error, %s.\n", m);
 	exit(1);
 }
 
@@ -189,7 +189,7 @@ main(int argc, char **argv)
 		}
 		fprintf(stderr, "Parsing module %s.\n", mget());
 		genmod();
-		while (yyparse()==0);
+		yyparse();
 		fclose(f);
 	}
 	deinitscope();
