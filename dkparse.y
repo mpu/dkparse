@@ -102,7 +102,7 @@ skipspaces(FILE *f)
 
 #define istoken(c) (isalnum(c) || c=='_' || c=='\'')
 static int
-lex(void)
+yylex(void)
 {
 	static char tok[TOKLEN];
 	int l, c;
@@ -140,26 +140,6 @@ lex(void)
 		return TYPE;
 	yylval.id=astrdup(tok);
 	return ID;
-}
-
-static int
-yylex(void)
-{
-	int i = lex();
-#if 0
-	char b[2] = { 0, 0 };
-	char *ty;
-	switch (i) {
-	case ARROW: ty = "ARROW"; break;
-	case FATARROW: ty = "FATARROW"; break;
-	case LONGARROW: ty = "LONGARROW"; break;
-	case TYPE: ty = "TYPE"; break;
-	case ID: ty = "ID"; break;
-	default: ty = b; b[0]=i; break;
-	}
-	fprintf(stderr, "lex: '%s'\n", ty);
-#endif
-	return i;
 }
 
 static void
