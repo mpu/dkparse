@@ -1,7 +1,13 @@
 dkparse is a small experiment trying to see how fast a
 dedukti source file can be parsed.
 
-Now it also checks that identifiers are well scoped,
-note that it does not handle external modules yet.
+05/27 Syntactic support for dot patterns was added,
+basic scoping and linearity checks are performed by
+dkparse.
 
-vi: tw=55
+05/14 Now it also checks that identifiers are well
+scoped, note that it does not handle external modules
+yet.
+
+
+vi: tw=55: nolist
