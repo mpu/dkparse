@@ -13,8 +13,10 @@
 
 %union {
 	char *id;
+	struct Pat *pat;
 	struct Term *term;
 	struct Env *env;
+	struct PArr *parr;
 }
 
 %token ARROW
@@ -23,7 +25,11 @@
 %token TYPE
 %token <id> ID
 
-%type <term> simpl
+%type <parr> dotps
+%type <parr> spats
+%type <pat> spat
+%type <pat> pat
+%type <term> sterm
 %type <term> app
 %type <term> term
 %type <env> bdgs
@@ -46,15 +52,15 @@ decl: ID ':' term {
 	char *id;
 
 	id=mqual($1);
-	if (scope($3, 0)) {
+	if (tscope($3, 0)) {
 		fprintf(stderr, "%s: Scope error in type of %s.\n", __func__, $1);
 		exit(1); // FIXME
 	}
-	gendecl(id, $3);
+	/* gendecl(id, $3); */
 	pushscope(id);
 };
 
-rule: '[' bdgs ']' term LONGARROW term { pushrule($2, $4, $6); }
+rule: '[' bdgs ']' pat LONGARROW term { pushrule($2, $4, $6); }
 ;
 
 bdgs: /* empty */          { $$ = 0; }
@@ -62,13 +68,28 @@ bdgs: /* empty */          { $$ = 0; }
     | ID ':' term          { $$ = eins(0, $1, $3); }
 ;
 
-simpl: ID           { $$ = mkvar($1); }
+pat: ID dotps spats { $$ = mkpat($1, $2, $3); }
+;
+
+dotps: /* empty */        { $$ = 0; }
+     | dotps '{' term '}' { $$ = pains($1, $3); }
+;
+
+spats: /* empty */ { $$ = 0; }
+     | spats spat  { $$ = pains($1, $2); }
+;
+
+spat: ID          { $$ = mkpat($1, 0, 0); }
+    | '(' pat ')' { $$ = $2; }
+;
+
+sterm: ID           { $$ = mkvar($1); }
      | '(' term ')' { $$ = $2; }
      | TYPE         { $$ = ttype; }
 ;
 
-app: simpl     { $$ = $1; }
-   | app simpl { $$ = mkapp($1, $2); }
+app: sterm     { $$ = $1; }
+   | app sterm { $$ = mkapp($1, $2); }
 ;
 
 term: app                      { $$ = $1; }
@@ -110,7 +131,7 @@ yylex(void)
 	c=skipspaces(f);
 	if (c==EOF)
 		return 0;
-	if (c=='[' || c==']' || c==',' || c=='.' || c==':' || c=='(' || c==')')
+	if (strchr("[]{}(),.:", c))
 		return c;
 	if (c=='-' || c=='=') {
 		switch (fgetc(f)) {
@@ -168,7 +189,7 @@ main(int argc, char **argv)
 			continue;
 		}
 		fprintf(stderr, "Parsing module %s.\n", mget());
-		genmod();
+		/* genmod(); */
 		yyparse();
 		fclose(f);
 	}

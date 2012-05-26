@@ -57,13 +57,13 @@ cons(char *s, struct L **l)
 	*l=car;
 }
 
-/* internal tscope - Check that a term is well scoped within
+/* internal tscp - Check that a term is well scoped within
  * the global environment and the local pe environment. This
  * will also qualify all unbound names with the current module
  * name.
  */
 static int
-tscope(struct Term *t, struct L *pe)
+tscp(struct Term *t, struct L *pe)
 {
 	int r=0;
 	struct L *p, *e=pe;
@@ -72,7 +72,7 @@ tscope(struct Term *t, struct L *pe)
 tail:
 	switch (t->typ) {
 	case App:
-		r=tscope(t->uapp.t1, e);
+		r=tscp(t->uapp.t1, e);
 		if (r) break;
 		t=t->uapp.t2;
 		goto tail;
@@ -83,7 +83,7 @@ tail:
 		goto tail;
 		break;
 	case Pi:
-		r=tscope(t->upi.ty, e);
+		r=tscp(t->upi.ty, e);
 		if (r) break;
 		cons(t->upi.x, &e);
 		t=t->upi.t;
@@ -116,13 +116,67 @@ ret:
 	return r;
 }
 
-/* scope - Scope a term in the global environment plus the given
+/* tscope - Scope a term in the global environment plus the given
  * environment, it will also qualify all names that appear unbound.
+ * If the term is not well scoped, 1 is returned, 0 otherwise.
  */
 int
-scope(struct Term *t, struct Env *e)
+tscope(struct Term *t, struct Env *e)
 {
-	return tscope(t, (struct L *)e);
+	return tscp(t, (struct L *)e);
+}
+
+/* internal penv - Store the environment when scoping patterns.
+ * Since patterns cannot contain binders, the environment can
+ * be shared between all recursive calls.
+ */
+static struct L *penv;
+
+/* internal pscp - Scope a pattern, in a recursive fashion.
+ */
+static int
+pscp(struct Pat *p)
+{
+	int i;
+	struct L *e;
+	struct Id id;
+
+tail:
+	for (e=penv; e; e=e->n)
+		if (e->s==p->c) {
+			p->nd=-1;
+			goto scopechild;
+		}
+	p->c=mqual(p->c); /* Not in local scope, qualify it. */
+	id.x=p->c;
+	if (avlget(&id, genv))
+		goto scopechild;
+	fprintf(stderr, "%s: Constructor %s is out of scope.\n", __func__, id.x);
+	return 1;
+
+scopechild:
+	for (i=0; i<p->nd; i++)
+		if (tscp(p->ds[i], penv))
+			return 1;
+	if (p->np==0)
+		return 0;
+	for (i=0; i<p->np-1; i++)
+		if (pscp(p->ps[i]))
+			return 1;
+	p=p->ps[i];
+	goto tail;
+}
+
+/* pscope - Scope a pattern in the global environment plus the
+ * given environment, it will also qualify all names that
+ * appear unbound and mark variables with a negative nd. If the
+ * pattern is not well scoped, 1 is returned, 0 otherwise.
+ */
+int
+pscope(struct Pat *p, struct Env *e)
+{
+	penv=(struct L *)e;
+	return pscp(p);
 }
 
 /* ------------- Global environment handling. ------------- */
@@ -266,7 +320,7 @@ int
 escope(struct Env *e)
 {
 	while (e) {
-		if (tscope(e->t, e->l.n))
+		if (tscp(e->t, e->l.n))
 			return 1;
 		e=(struct Env *)e->l.n;
 	}
