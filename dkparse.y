@@ -101,7 +101,7 @@ term: app                      { $$ = $1; }
 %%
 
 static int
-peek(FILE *f)
+peek(void)
 {
 	int c = fgetc(f);
 	if (c!=EOF) ungetc(c, f);
@@ -109,14 +109,14 @@ peek(FILE *f)
 }
 
 static int
-skipspaces(FILE *f)
+skipspaces(void)
 {
 	int c;
 	while (1) {
 		while ((c=fgetc(f))!=EOF && isspace(c));
-		if (c!='(' || peek(f)!=';')
+		if (c!='(' || peek()!=';')
 			return c;
-		while ((fgetc(f)!=';' || peek(f)!=')') && !feof(f));
+		while ((fgetc(f)!=';' || peek()!=')') && !feof(f));
 		fgetc(f); /* Drop trailing ')'. */
 	}
 }
@@ -128,7 +128,7 @@ yylex(void)
 	static char tok[TOKLEN];
 	int l, c;
 
-	c=skipspaces(f);
+	c=skipspaces();
 	if (c==EOF)
 		return 0;
 	if (strchr("[]{}(),.:", c))
@@ -144,7 +144,7 @@ yylex(void)
 		}
 		return c; /* This is an error. */
 	}
-	for (l=0; c!=EOF && (istoken(c) || (c=='.' && istoken(peek(f)))); l++) {
+	for (l=0; c!=EOF && (istoken(c) || (c=='.' && istoken(peek()))); l++) {
 		if (l>=TOKLEN-1) {
 			fputs("Maximum token length exceeded.\n", stderr);
 			exit(1);
