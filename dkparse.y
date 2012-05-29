@@ -56,7 +56,7 @@ decl: ID ':' term {
 		fprintf(stderr, "%s: Scope error in type of %s.\n", __func__, $1);
 		exit(1); // FIXME
 	}
-	/* gendecl(id, $3); */
+	gendecl(id, $3);
 	pushscope(id);
 };
 
@@ -189,7 +189,7 @@ main(int argc, char **argv)
 			continue;
 		}
 		fprintf(stderr, "Parsing module %s.\n", mget());
-		/* genmod(); */
+		genmod();
 		yyparse();
 		fclose(f);
 	}

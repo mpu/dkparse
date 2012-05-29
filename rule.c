@@ -97,7 +97,7 @@ dorules(void)
 		              , __func__, rs.x);
 		exit(1); // FIXME
 	}
-	/* genrules(&rs); */
+	genrules(&rs);
 	flushrules();
 	dkfree();
 }
