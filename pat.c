@@ -212,16 +212,11 @@ chkpat(int dpth, struct Pat *p)
 	
 	}
 	id.x=p->c;
-	if (p->nd<0) { /* We recognized a variable. */
-		if (p->nd+p->np==0) {
-			id.n=tget(&vr, id.x)+1;
-			tset(&vr, id);
-			vsetpath(dpth, id.x);
-			return 0;
-		}
-		fprintf(stderr, "%s: Pattern variable %s cannot be applied.\n"
-		              , __func__, id.x);
-		return 1;
+	if (p->np<0) { /* We recognized a variable. */
+		id.n=tget(&vr, id.x)+1;
+		tset(&vr, id);
+		vsetpath(dpth, id.x);
+		return 0;
 	}
 	for (a=0; a<p->np; a++) {
 		ploc[dpth]=a+p->nd+1;
@@ -299,6 +294,16 @@ pchk(struct Rule *r)
 	int i, eerr;
 	struct VPth *vp;
 
+	if (0 && r->l->np<0) {
+		/* This can be omitted because: if the rule
+		 * does not have arguments then the variable
+		 * at the head will not appear in patterns,
+		 * and if it has arguments, pscope will
+		 * complain because a variable cannot be
+		 * applied.
+		 */
+		return 1;
+	}
 	if (r->elen) {
 		rvp=vp=r->vpa=dkalloc(r->elen*sizeof *r->vpa);
 		eiter(r->e, fillvpa, &vp);
@@ -306,7 +311,7 @@ pchk(struct Rule *r)
 		rvp=r->vpa=0;
 	vr.i=0;
 	for (i=0; i<r->l->np; i++) {
-		ploc[0]=i+1;
+		ploc[0]=r->l->nd+i+1;
 		if (chkpat(1, r->l->ps[i]))
 			return 1;
 	}
