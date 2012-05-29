@@ -103,7 +103,12 @@ end
 
 function check(n, t, c)
   assert(t.tk and c.ck);
-  if t.tk == tlam and c.ck == cpi then
+  if t.tk == tlam then
+    if c.ck ~= cpi then
+      print("Type is:");
+      print("    " .. strc(c));
+      error("Type checking failed: Product expected.");
+    end
     local v = var(n);
     return check(n+1, t.tlam[2](box(c.cpi[1], v), v), c.cpi[2](v));
   elseif t.tk == tpi then
