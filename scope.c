@@ -144,8 +144,13 @@ pscp(struct Pat *p)
 tail:
 	for (e=penv; e; e=e->n)
 		if (e->s==p->c) {
-			p->nd=-1;
-			goto scopechild;
+			if (p->nd+p->np==0) {
+				p->np=-1;
+				return 0;
+			}
+			fprintf(stderr, "%s: Pattern variable %s must not"
+					" be applied.\n", __func__, p->c);
+			return 1;
 		}
 	p->c=mqual(p->c); /* Not in local scope, qualify it. */
 	id.x=p->c;
@@ -170,7 +175,8 @@ scopechild:
 /* pscope - Scope a pattern in the global environment plus the
  * given environment, it will also qualify all names that
  * appear unbound and mark variables with a negative nd. If the
- * pattern is not well scoped, 1 is returned, 0 otherwise.
+ * pattern is not well scoped or if it contains an applied pattern
+ * variable, 1 is returned, 0 otherwise.
  */
 int
 pscope(struct Pat *p, struct Env *e)
