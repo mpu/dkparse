@@ -64,7 +64,7 @@ mset(char *path)
 		path=p+1;
 	}
 	p=strchr(path, '.');
-	if (!p || strcmp(p, ".dk"))
+	if (!p || strcmp(p, ".dk")!=0)
 		fprintf(stderr, "%s: Warning, path %s should end in '.dk'.\n"
 		              , __func__, path);
 	if (!p)

@@ -109,7 +109,7 @@ astrdup(const char *s)
 	struct Atom **p;
 
 	p=&apool[hash(s)%APOOLSZ];
-	while (*p && strcmp((*p)->s, s))
+	while (*p && strcmp((*p)->s, s)!=0)
 		p=&(*p)->next;
 	if (*p)
 		return (*p)->s;

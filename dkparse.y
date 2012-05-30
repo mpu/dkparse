@@ -157,7 +157,7 @@ yylex(void)
 		return c; /* This is an error. */
 	if (c!=EOF)
 		ungetc(c, f); /* Push back last char. */
-	if (!strcmp(tok, "Type"))
+	if (strcmp(tok, "Type")==0)
 		return TYPE;
 	yylval.id=astrdup(tok);
 	return ID;
