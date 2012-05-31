@@ -16,3 +16,7 @@ $(OFILES): dk.h
 SOURCES=lib/avl.c alloc.c term.c pat.c rule.c scope.c module.c gen.c
 stat:
 	c_count ${SOURCES}
+
+.PHONY: test
+test:
+	lua test/do.lua -p `pwd`
