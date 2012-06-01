@@ -1,6 +1,14 @@
 dkparse is a small experiment trying to see how fast a
 dedukti source file can be parsed.
 
+06/01 Lua code can be generated using dkparse, the
+feature is still experimental but on simple examples it
+works. The code is generated on the standard output and
+is meant to be executed by a Lua interpreter, note that
+the file lua/dedukti.lua must be loaded first, a
+typical use case is shown below:
+    dkparse f.dk | lua -l dedukti
+
 05/27 Syntactic support for dot patterns was added,
 basic scoping and linearity checks are performed by
 dkparse.
