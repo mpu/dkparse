@@ -1,6 +1,11 @@
 #include <stdlib.h>
 /* Dk types and functions. */
 
+/* IDLEN - The maximum size of a fully qualified
+ * identifier. This includes the terminating nul.
+ */
+#define IDLEN 128
+
 /* struct Term - Terms of the lambda-Pi calculus are
  * classically represented as a tag and an union. 
  */
@@ -82,7 +87,8 @@ void *xalloc(size_t);
 void *xrealloc(void *, size_t);
 void initalloc(void);
 void deinitalloc(void);
-char *astrdup(const char *);
+char *astrdup(const char *, int);
+int aqual(const char *);
 void *dkalloc(size_t);
 void dkfree(void);
 

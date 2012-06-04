@@ -368,7 +368,7 @@ gendecl(char *x, struct Term *t)
 
 /* MAXID - Maximum size of an identifier in the generated code.
  */
-#define MAXID 128
+#define MAXID 2*IDLEN
 
 /* internal gname - Generate the variable name to be emitted to
  * access a variable. This name can be of two kinds, either a
@@ -380,7 +380,10 @@ gname(enum NameKind nt, char *x)
 {
 	static char s[MAXID], *p;
 
-	for (p=s; *x; x++, p++) {
+	memcpy(s, x, aqual(x));
+	x+=aqual(x);
+	p=s+aqual(x);
+	for (; *x; x++, p++) {
 		if (p-s>=MAXID-4) {
 			fprintf(stderr, "%s: Maximum identifier length exceeded.\n"
 			                "\tThe maximum is %d.\n", __func__, MAXID);

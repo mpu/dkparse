@@ -93,7 +93,7 @@ tail:
 		for (p=e; p; p=p->n)
 			if (p->s==t->uvar)
 				goto ret;
-		if (strchr(t->uvar, '.')) /* XXX Temporary hack to handle modules. */
+		if (aqual(t->uvar)) /* XXX Temporary hack to handle modules. */
 			goto ret;
 		t->uvar=mqual(t->uvar);
 		id.x=t->uvar;

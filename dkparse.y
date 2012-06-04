@@ -4,7 +4,6 @@
   #include <stdio.h>
   #include <string.h>
   #include "dk.h"
-  #define TOKLEN 128
 
   static FILE *f;
   static int yylex(void);
@@ -125,8 +124,8 @@ skipspaces(void)
 static int
 yylex(void)
 {
-	static char tok[TOKLEN];
-	int l, c;
+	static char tok[IDLEN];
+	int l, c, qual;
 
 	c=skipspaces();
 	if (c==EOF)
@@ -144,11 +143,13 @@ yylex(void)
 		}
 		return c; /* This is an error. */
 	}
-	for (l=0; c!=EOF && (istoken(c) || (c=='.' && istoken(peek()))); l++) {
-		if (l>=TOKLEN-1) {
-			fputs("Maximum token length exceeded.\n", stderr);
+	for (qual=l=0; c!=EOF && (istoken(c) || (c=='.' && istoken(peek()))); l++) {
+		if (l>=IDLEN-1) {
+			fputs("Maximum identifier length exceeded.\n", stderr);
 			exit(1);
 		}
+		if (c=='.')
+			qual=l+1;
 		tok[l]=c;
 		c=fgetc(f);
 	}
@@ -159,7 +160,7 @@ yylex(void)
 		ungetc(c, f); /* Push back last char. */
 	if (strcmp(tok, "Type")==0)
 		return TYPE;
-	yylval.id=astrdup(tok);
+	yylval.id=astrdup(tok, qual);
 	return ID;
 }
 
