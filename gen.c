@@ -436,8 +436,10 @@ gcode(struct Term *t)
 	case Pi:
 		emit("{ ck = cpi, cpi = { ");
 		gcode(t->upi.ty);
-		emit(", function (%s) return ",
-		     gname(C, t->upi.x ? t->upi.x : adummy));
+		if (t->upi.x)
+			emit(", function (%s) return ", gname(C, t->upi.x));
+		else
+			emit(", function (dummy_c) return ");
 		gcode(t->upi.t);
 		emit(" end } }");
 		break;
@@ -460,8 +462,6 @@ gcode(struct Term *t)
 static void
 gterm(struct Term *t)
 {
-	char *x;
-
 /* tail: */
 	switch (t->typ) {
 	case Var:
@@ -479,9 +479,11 @@ gterm(struct Term *t)
 		gterm(t->upi.ty);
 		emit(", ");
 		gcode(t->upi.ty);
-		x = t->upi.x ? t->upi.x : adummy;
-		emit(", function (%s, ", gname(T, x));
-		emit("%s) return ", gname(C, x));
+		if (t->upi.x) {
+			emit(", function (%s, ", gname(T, t->upi.x));
+			emit("%s) return ", gname(C, t->upi.x));
+		} else
+			emit(", function (dummy_t, dummy_c) return ");
 		gterm(t->upi.t);
 		emit(" end } }");
 		break;
