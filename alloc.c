@@ -99,11 +99,6 @@ deinitalloc(void)
 
 /* ------------- Atoms management. ------------- */
 
-/* adummy - This is a dummy atom, when an atom with an
- * irrelevent content is needed, use this one.
- */
-char *adummy = ((struct Atom) { "dummy" }).s;
-
 /* internal hash - Simple hash of a string.
  */
 static inline unsigned
