@@ -87,6 +87,7 @@ void *xalloc(size_t);
 void *xrealloc(void *, size_t);
 void initalloc(void);
 void deinitalloc(void);
+extern char *adummy;
 char *astrdup(const char *, int);
 int aqual(const char *);
 void *dkalloc(size_t);

@@ -374,6 +374,9 @@ gendecl(char *x, struct Term *t)
  * access a variable. This name can be of two kinds, either a
  * 'code' name or a 'term' name.
  * Warning, this returns a static buffer.
+ * Warning, this must be called _only_ when x is an atom,
+ * calling it with a static string will cause undefined
+ * behaviour.
  */
 static inline char *
 gname(enum NameKind nt, char *x)
@@ -381,8 +384,8 @@ gname(enum NameKind nt, char *x)
 	static char s[MAXID], *p;
 
 	memcpy(s, x, aqual(x));
-	x+=aqual(x);
 	p=s+aqual(x);
+	x+=aqual(x);
 	for (; *x; x++, p++) {
 		if (p-s>=MAXID-4) {
 			fprintf(stderr, "%s: Maximum identifier length exceeded.\n"
@@ -439,7 +442,7 @@ gcode(struct Term *t)
 		emit("{ ck = cpi, cpi = { ");
 		gcode(t->upi.ty);
 		emit(", function (%s) return ",
-		     t->upi.x ? gname(C, t->upi.x) : "dkhole");
+		     gname(C, t->upi.x ? t->upi.x : adummy));
 		gcode(t->upi.t);
 		emit(" end } }");
 		break;
@@ -481,7 +484,7 @@ gterm(struct Term *t)
 		gterm(t->upi.ty);
 		emit(", ");
 		gcode(t->upi.ty);
-		x = t->upi.x ? t->upi.x : "dkhole";
+		x = t->upi.x ? t->upi.x : adummy;
 		emit(", function (%s, ", gname(T, x));
 		emit("%s) return ", gname(C, x));
 		gterm(t->upi.t);
