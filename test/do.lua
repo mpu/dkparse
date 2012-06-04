@@ -4,7 +4,7 @@ do
     local unit_tests = {
         { name = "bug_sort", result = 1 },
         { name = "bug_abs", result = 1 },
-        -- { name = "exemple", result = 0 },
+        { name = "exemple", result = 0 },
         { name = "peano", result = 0, deps = { "coc", "logic" } },
         { name = "f", result = 0 },
         { name = "compute", result = 0 },
