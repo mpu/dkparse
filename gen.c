@@ -2,152 +2,56 @@
 #include <stdio.h>
 #include <string.h>
 #include "dk.h"
-#define emit printf
+#define emit(...) fprintf(gfile, __VA_ARGS__)
 
-/* ------------- Pattern compilation. ------------- */
+/* ------------- Global settings. ------------- */
 
-/* MAXPDPTH - The maximum depth of a pattern.
+/* gmode - The mode used to generate code. If the mode is
+ * Check then the Lua generated code, will type check the
+ * current module; if the mode is Compile, only the dynamic
+ * representation of terms will be compiled, the code
+ * produced must be used only when the module has been
+ * successfully type checked.
  */
-#define MAXPDPTH 32
+enum GenMode gmode;
 
-/* struct Pat - Patterns are constructors applied to
- * a list of other patterns.
- * The loc field is a 0 terminated array of integers
- * representing the path where the constructor is located
- * in the pattern.
- * As a convention, if ar is negative, the pattern is
- * a variable, if c is null, then it is a non-failing
- * pattern (a wildcard).
+/* gfile - The file in which generated code is printed.
  */
-struct Pat {
-	char *c;
-	int ar, *loc;
-	struct Pat *ps;
-};
+FILE *gfile;
+
+/* ------------- Pattern matrices. ------------- */
 
 /* struct PMat - A pattern matrix.
- */
+*/
 struct PMat {
-	struct Pat **m;
+	struct Pat ***m;
 	int *rs;
 	int r, c;
 };
 
-/* struct VPth - Associate a pattern variable to its path.
- * The path must be 0 terminated.
- */
-struct VPth {
-	char *x;
-	int *p;
-};
-
-/* internal ploc - This stores the current path during the
- * construction of the initial pattern matrix.
- */
-static int ploc[MAXPDPTH];
-
-/* internal re rvp - These two variables store the environment
- * and the bindings from pattern variables to paths of the
- * rule which is currently compiled to a pattern matrix.
- */
-static struct Env *re;
-static struct VPth *rvp;
-
-/* internal duppath - Duplicate the current path and return it.
- * The returned path will be a 0 terminated array of dpth+1
- * elements.
- */
-static int *
-duppath(int dpth)
-{
-	int *p=dkalloc((dpth+1)*sizeof *p);
-	int i;
-
-	for (i=0; i<dpth; i++)
-		p[i]=ploc[i];
-	p[i]=0;
-	return p;
-}
-
-/* internal vsetpath - Bind one variable to the current path.
- */
-static void
-vsetpath(int dpth, char *x)
-{
-	int i;
-
-	for (i=0; rvp[i].x!=x; i++)
-		;
-	assert(!rvp[i].p);
-	rvp[i].p=duppath(dpth);
-	return;
-}
-
-/* internal pat - Create a pattern corresponding to the
- * input term, variables in the re environment are seen
- * as pattern variables. The dpth argument is used to keep
- * track of the current depth while browsing the pattern.
- */
-static void
-pat(int dpth, struct Pat *p, struct Term *t)
-{
-	int i;
-
-	if (dpth>=MAXPDPTH) {
-		fprintf(stderr, "%s: Maximum pattern depth exceeded.\n"
-		                "\tThe maximum is %d.\n", __func__, MAXPDPTH);
-		exit(1); // FIXME
-	}
-	if (t->typ==Var && eget(re, t->uvar)) {
-		vsetpath(dpth, t->uvar);
-		p->ps=0;
-		p->ar=-1;
-		p->loc=0;
-		p->c=t->uvar;
-	} else {
-		p->ar=napps(t, 0);
-		p->ps=dkalloc(p->ar*sizeof *p->ps);
-		for (i=p->ar-1; i>=0; i--, t=t->uapp.t1) {
-			ploc[dpth]=i+1;
-			pat(dpth+1, &p->ps[i], t->uapp.t2);
-		}
-		p->loc=duppath(dpth);
-		assert(t->typ==Var);
-		p->c=t->uvar;
-	}
-}
-
 /* internal pmnew - Create a new pattern matrix corresponding
- * to a set of rewrite rules. It also fills the vpa array with
- * proper paths for each variable occuring in a pattern.
+ * to a set of rewrite rules. It simply needs to copy patterns
+ * from the left hand side of rules in an array.
  */
 static struct PMat
-pmnew(struct RSet *rs, struct VPth *vpa[])
+pmnew(struct RSet *rs)
 {
-	int i, n;
+	int r;
 	struct PMat m;
-	struct Term *t;
 
-	assert(rs->i>0 && rs->ar>0);
+	assert(rs->i>0 && rs->s[0].l->np>0);
 	m.r=rs->i;
-	m.c=rs->ar;
+	m.c=rs->s[0].l->np;
 	m.m=dkalloc(m.r*sizeof *m.m);
 	m.rs=dkalloc(m.r*sizeof *m.rs);
 
-	for (i=0; i<m.r; i++) {
-		m.m[i]=dkalloc(m.c*sizeof *m.m[i]);
-		m.rs[i]=i;
-		rvp=vpa[i];
-		re=rs->s[i].e;
-		for (n=m.c-1, t=rs->s[i].l; n>=0; n--, t=t->uapp.t1) {
-			ploc[0]=n+1;
-			pat(1, &m.m[i][n], t->uapp.t2);
-		}
+	for (r=0; r<m.r; r++) {
+		m.m[r]=dkalloc(m.c*sizeof *m.m[r]);
+		m.rs[r]=r;
+		memcpy(m.m[r], rs->s[r].l->ps, m.c*sizeof *m.m[r]);
 	}
 	return m;
 }
-
-/* ------------- Pattern matrices operations. ------------- */
 
 /* internal pmspec - Create a pattern matrix by specializing
  * the column of another pattern matrix for a given constructor
@@ -157,13 +61,14 @@ pmnew(struct RSet *rs, struct VPth *vpa[])
 static struct PMat
 pmspec(struct PMat m, char *x, int ar, int c)
 {
-	const size_t spat=sizeof (struct Pat);
+	static struct Pat glob = { .np = -1 };    /* A glob (match everything) pattern. */
+	const size_t sppat=sizeof (struct Pat *);
 	int i, j, k;
 	struct PMat n;
 
 	assert(c>=0 && c<m.c && m.r>0);
 	for (n.r=i=0; i<m.r; i++) {
-		if (m.m[i][c].c==x || m.m[i][c].ar<0)
+		if (m.m[i][c]->np<0 || m.m[i][c]->c==x)
 			n.r++;
 	}
 	n.c=m.c-1+ar;
@@ -174,7 +79,7 @@ pmspec(struct PMat m, char *x, int ar, int c)
 	}
 	n.rs=dkalloc(n.r*sizeof *n.rs);
 	for (k=i=0; i<n.r; k++)
-		if (m.m[k][c].c==x || m.m[k][c].ar<0)
+		if (m.m[k][c]->np<0 || m.m[k][c]->c==x)
 			n.rs[i++]=m.rs[k];
 	if (n.c==0) {
 		n.m=0;
@@ -183,24 +88,19 @@ pmspec(struct PMat m, char *x, int ar, int c)
 	n.m=dkalloc(n.r*sizeof *n.m);
 
 	for (k=i=0; i<n.r; k++) {
-		struct Pat *ps=m.m[k];
-		if (ps[c].c==x) {
-			n.m[i]=dkalloc(n.c*spat);
-			memcpy(n.m[i], ps, c*spat);
-			memcpy(n.m[i]+c, ps[c].ps, ar*spat);
-			memcpy(n.m[i]+c+ar, ps+c+1, (n.c-c-ar)*spat);
+		struct Pat **ps=m.m[k];
+		if (ps[c]->np<0) {
+			n.m[i]=dkalloc(n.c*sppat);
+			memcpy(n.m[i], ps, c*sppat);
+			for (j=0; j<ar; j++)
+				n.m[i][c+j]=&glob;
+			memcpy(n.m[i]+c+ar, ps+c+1, (n.c-c-ar)*sppat);
 			i++;
-		}
-		else if (ps[c].ar<0) {
-			n.m[i]=dkalloc(n.c*spat);
-			memcpy(n.m[i], ps, c*spat);
-			for (j=0; j<ar; j++) {
-				n.m[i][c+j].c=0;
-				n.m[i][c+j].ar=-1;
-				n.m[i][c+j].loc=0;
-				n.m[i][c+j].ps=0;
-			}
-			memcpy(n.m[i]+c+ar, ps+c+1, (n.c-c-ar)*spat);
+		} else if (ps[c]->c==x) {
+			n.m[i]=dkalloc(n.c*sppat);
+			memcpy(n.m[i], ps, c*sppat);
+			memcpy(n.m[i]+c, ps[c]->ps, ar*sppat);
+			memcpy(n.m[i]+c+ar, ps+c+1, (n.c-c-ar)*sppat);
 			i++;
 		}
 	}
@@ -213,13 +113,13 @@ pmspec(struct PMat m, char *x, int ar, int c)
 static struct PMat
 pmdef(struct PMat m, int c)
 {
-	const size_t spat=sizeof (struct Pat);
+	const size_t sppat=sizeof (struct Pat *);
 	int i, k;
 	struct PMat n;
 
 	assert(c<m.c);
 	for (n.r=0, i=0; i<m.r; i++)
-		if (m.m[i][c].ar<0)
+		if (m.m[i][c]->np<0)
 			n.r++;
 	n.c=m.c-1;
 	if (n.r==0) {
@@ -229,7 +129,7 @@ pmdef(struct PMat m, int c)
 	}
 	n.rs=dkalloc(n.r*sizeof *n.rs);
 	for (k=i=0; i<n.r; k++)
-		if (m.m[k][c].ar<0)
+		if (m.m[k][c]->np<0)
 			n.rs[i++]=m.rs[k];
 	if (n.c==0) {
 		n.m=0;
@@ -238,10 +138,10 @@ pmdef(struct PMat m, int c)
 	n.m=dkalloc(n.r*sizeof *n.m);
 
 	for (k=i=0; i<n.r; k++)
-		if (m.m[k][c].ar<0) {
-			n.m[i]=dkalloc(n.c*spat);
-			memcpy(n.m[i], m.m[k], c*spat);
-			memcpy(n.m[i]+c, m.m[k]+c+1, (n.c-c)*spat);
+		if (m.m[k][c]->np<0) {
+			n.m[i]=dkalloc(n.c*sppat);
+			memcpy(n.m[i], m.m[k], c*sppat);
+			memcpy(n.m[i]+c, m.m[k]+c+1, (n.c-c)*sppat);
 			i++;
 		}
 	return n;
@@ -264,9 +164,12 @@ pmdef(struct PMat m, int c)
  */
 enum NameKind { C, T };
 
+static void gccon(char *, int);
 static char *gname(enum NameKind, char *);
 static void gterm(struct Term *);
 static void gcode(struct Term *);
+static void gpterm(struct Pat *);
+static void gpcode(struct Pat *);
 
 /* ------------- Module compiling. ------------- */
 
@@ -280,7 +183,8 @@ genmod(void)
 
 	q=m=mget();
 	emit("--[[ Code for module %s. ]]\n", m);
-	emit("local "); /* This line causes a 20% speedup. */
+	if (gmode==Check)
+		emit("local "); /* This line causes a 20% speedup. */
 	while ((p=strchr(q, '.'))) {
 		emit("%.*s = { }\n", (int)(p-m), m);
 		q=p+1;
@@ -294,15 +198,6 @@ genmod(void)
  * being compiled.
  */
 struct RSet *crs;
-
-/* internal vpa esz - The vpa array stores variable, path
- * bindings for each branch of the pattern matching (each
- * rule of the rule set). The integer esz[i] is the length
- * of the array vpa[i] (the number of pattern variables for
- * the rule i).
- */
-struct VPth **vpa;
-int *esz;
 
 /* internal gpath - Generate the expression to access
  * the object stored at the given path.
@@ -331,25 +226,24 @@ gcond(int *path, char *c)
 }
 
 /* internal glocals - Generate the binding list local to the
- * rule i.
+ * rule r.
  */
 static void
-glocals(int i)
+glocals(struct Rule *r)
 {
 	int v;
 
-	assert(i<crs->i);
-	if (esz[i]==0)
+	if (r->elen==0)
 		return;
 	emit("local ");
-	emit("%s", gname(C, vpa[i][0].x));
-	for (v=1; v<esz[i]; v++)
-		emit(", %s", gname(C, vpa[i][v].x));
+	emit("%s", gname(C, r->vpa[0].x));
+	for (v=1; v<r->elen; v++)
+		emit(", %s", gname(C, r->vpa[v].x));
 	emit(" = ");
-	gpath(vpa[i][0].p);
-	for (v=1; v<esz[i]; v++) {
+	gpath(r->vpa[0].p);
+	for (v=1; v<r->elen; v++) {
 		emit(", ");
-		gpath(vpa[i][v].p);
+		gpath(r->vpa[v].p);
 	}
 	emit("\n");
 }
@@ -363,39 +257,38 @@ glocals(int i)
 static void
 grules(struct PMat pm)
 {
-	int i, c, sep;
+	int i, c;
 	struct Pat *p;
 	struct PMat m;
 
 	if (pm.r==0) {
-		emit("return { ck = ccon, ccon = \"%s\", args = { ", crs->x);
-		for (sep=0, i=1; i<=crs->ar; i++, sep=1)
-			emit(sep ? ", y%d" : "y%d", i);
-		emit(" } }");
+		emit("return ");
+		gccon(crs->x, crs->s[0].l->nd+crs->s[0].l->np);
 		return;
 	}
 	for (c=0; c<pm.c; c++)
-		if (pm.m[0][c].ar>=0)
+		if (pm.m[0][c]->np>=0)
 			break;
 	if (c==pm.c) {
-		glocals(pm.rs[0]);
+		assert(pm.rs[0]<crs->i);
+		glocals(&crs->s[pm.rs[0]]);
 		emit("return ");
 		gcode(crs->s[pm.rs[0]].r);
 		return;
 	}
 
-	p=&pm.m[0][c];
+	p=pm.m[0][c];
 	gcond(p->loc, p->c);
-	m=pmspec(pm, p->c, p->ar, c);
+	m=pmspec(pm, p->c, p->np, c);
 	grules(m);
 
 	for (i=1; i<pm.r; i++) {
-		p=&pm.m[i][c];
-		if (p->ar<0)
+		p=pm.m[i][c];
+		if (p->np<0)
 			continue;
 		emit("\nelse");
 		gcond(p->loc, p->c);
-		m=pmspec(pm, p->c, p->ar, c);
+		m=pmspec(pm, p->c, p->np, c);
 		grules(m);
 	}
 
@@ -414,26 +307,12 @@ gchkenv(char *x, struct Term *t, void *unused)
 	emit("chkbeg(\"%s\")\n", x);
 	emit(iskind(t)?"chkkind(":"chktype(");
 	gterm(t);
-	emit(")\n%s = { ck = ccon, ccon = \"%s\", args = { } }\n", gname(C, x), x);
-	emit("%s = { tk = tbox, tbox = { ", gname(T, x));
+	emit(")\nlocal %s = ", gname(C, x));
+	gccon(x, 0);
+	emit("\nlocal %s = { tk = tbox, tbox = { ", gname(T, x));
 	gcode(t);
 	emit(", %s } }\n", gname(C, x));
 	emit("chkend(\"%s\")\n", x);
-}
-
-/* internal fillvpa - This is a helper function called by
- * eiter to initialize an array of struct VPth objects.
- * The x fields are set to elements of the environment and
- * the p fields are set to 0.
- */
-static void
-fillvpa(char *x, struct Term *t, void *ppa)
-{
-	struct VPth **pp=ppa;
-
-	(*pp)->x=x;
-	(*pp)->p=0;
-	(*pp)++;
 }
 
 /* genrules - Generate code to type check a rule set.
@@ -441,54 +320,48 @@ fillvpa(char *x, struct Term *t, void *ppa)
 void
 genrules(struct RSet *rs)
 {
-	int i, v;
-	struct VPth *ppa;
+	int i, ar;
 	struct PMat pm;
 
+	assert(rs->i>0);
+	ar=rs->s[0].l->nd+rs->s[0].l->np;
 	crs=rs;
-	vpa=dkalloc(rs->i*sizeof *vpa);
-	esz=dkalloc(rs->i*sizeof *esz);
-	for (i=0; i<rs->i; i++) {
-		esz[i]=elen(rs->s[i].e);
-		if (!esz[i]) {
-			vpa[i]=0;
-			continue;
-		}
-		ppa=vpa[i]=dkalloc(esz[i]*sizeof *vpa[i]);
-		eiter(rs->s[i].e, fillvpa, &ppa);
-	}
 
-	if (rs->ar==0) {
-		emit("--[[ Type checking the definition of %s. ]]\n", rs->x);
-		emit("chkbeg(\"definition of %s\")\n", rs->x);
-		emit("chk(");
-		gterm(rs->s[0].r);
-		emit(", %s.tbox[1])\n", gname(T, rs->x));
-		emit("chkend(\"definition of %s\")\n", rs->x);
+	if (ar==0) {
+		if (gmode==Check) {
+			emit("--[[ Type checking the definition of %s. ]]\n", rs->x);
+			emit("chkbeg(\"definition of %s\")\n", rs->x);
+			emit("chk(");
+			gterm(rs->s[0].r);
+			emit(", %s.tbox[1])\n", gname(T, rs->x));
+			emit("chkend(\"definition of %s\")\n", rs->x);
+		}
 		emit("%s = ", gname(C, rs->x));
 		gcode(rs->s[0].r);
 		emit("\n\n");
 		return;
 	}
-	emit("--[[ Type checking rules of %s. ]]\n", rs->x);
-	emit("function check_rules()\nchkbeg(\"rules of %s\")\n", rs->x);
-	for (i=0; i<rs->i; i++) {
-		emit("chkbeg(\"rule %d\")\n", i+1);
-		eiter(rs->s[i].e, gchkenv, 0);
-		emit("do\nlocal ty = synth(0, ");
-		gterm(rs->s[i].l);
-		emit(")\nchk(");
-		gterm(rs->s[i].r);
-		emit(", ty)\nend\nchkend(\"rule %d\")\n", i+1);
+	if (gmode==Check) {
+		emit("--[[ Type checking rules of %s. ]]\n", rs->x);
+		emit("function check_rules()\nchkbeg(\"rules of %s\")\n", rs->x);
+		for (i=0; i<rs->i; i++) {
+			emit("chkbeg(\"rule %d\")\n", i+1);
+			eiter(rs->s[i].e, gchkenv, 0);
+			emit("do\nlocal ty = synth(0, ");
+			gpterm(rs->s[i].l);
+			emit(")\nchk(");
+			gterm(rs->s[i].r);
+			emit(", ty)\nend\nchkend(\"rule %d\")\n", i+1);
+		}
+		emit("chkend(\"rules of %s\")\nend\ncheck_rules()\n", rs->x);
 	}
-	emit("chkend(\"rules of %s\")\nend\ncheck_rules()\n", rs->x);
 	emit("--[[ Compiling rules of %s. ]]\n", rs->x);
-	emit("%s = { ck = clam, arity = %d, args = { }, clam =\n", gname(C, rs->x), rs->ar);
+	emit("%s = { ck = clam, arity = %d, args = { }, clam =\n", gname(C, rs->x), ar);
 	emit("function (y1");
-	for (i=2; i<=rs->ar; i++)
+	for (i=2; i<=ar; i++)
 		emit(", y%d", i);
 	emit(")\n");
-	pm=pmnew(rs, vpa);
+	pm=pmnew(rs);
 	grules(pm);
 	emit("\nend }\n\n");
 }
@@ -500,9 +373,19 @@ genrules(struct RSet *rs)
 void
 gendecl(char *x, struct Term *t)
 {
-	emit("--[[ Type checking %s. ]]\n", x);
-	gchkenv(x, t, 0);
-	emit("\n");
+	if (gmode==Check) {
+		emit("--[[ Type checking %s. ]]\n", x);
+		emit("chkbeg(\"%s\")\n", x);
+		emit(iskind(t)?"chkkind(":"chktype(");
+		gterm(t);
+		emit(")\n");
+		emit("chkend(\"%s\")\n", x);
+	}
+	emit("%s = ", gname(C, x));
+	gccon(x, 0);
+	emit("\n%s = { tk = tbox, tbox = { ", gname(T, x));
+	gcode(t);
+	emit(", %s } }\n\n", gname(C, x));
 }
 
 /* ------------- Term compiling. ------------- */
@@ -512,26 +395,41 @@ gendecl(char *x, struct Term *t)
  */
 #define MAXSDPTH 128
 
+/* internal gccon - Generate the dynamic representation of
+ * the constant x applied to y1, ..., yn.
+ */
+static inline void
+gccon(char *x, int n)
+{
+	int i, sep;
+
+	emit("{ ck = ccon, ccon = \"%s\", args = {", x);
+	for (sep=0, i=1; i<=n; i++, sep=1)
+		emit(sep?", y%d":" y%d", i);
+	emit(" } }");
+}
+
 /* MAXID - Maximum size of an identifier in the generated code.
  */
-#define MAXID 128
+#define MAXID 2*IDLEN+1
 
 /* internal gname - Generate the variable name to be emitted to
  * access a variable. This name can be of two kinds, either a
  * 'code' name or a 'term' name.
  * Warning, this returns a static buffer.
+ * Warning, this must be called _only_ when x is an atom,
+ * calling it with a static string will cause undefined
+ * behaviour.
  */
 static inline char *
 gname(enum NameKind nt, char *x)
 {
-	static char s[MAXID], *p;
+	static char s[MAXID], *p, *q;
 
-	for (p=s; *x; x++, p++) {
-		if (p-s>=MAXID-4) {
-			fprintf(stderr, "%s: Maximum identifier length exceeded.\n"
-			                "\tThe maximum is %d.\n", __func__, MAXID);
-			exit(1);
-		}
+	q=x+aqual(x);
+	for (p=s; x<q; p++, x++)
+		*p=*x;
+	for (; *x; x++, p++) {
 		if (*x=='x' || *x=='\'') {
 			*p++='x';
 			*p=*x=='\''?'q':*x;
@@ -581,8 +479,10 @@ gcode(struct Term *t)
 	case Pi:
 		emit("{ ck = cpi, cpi = { ");
 		gcode(t->upi.ty);
-		emit(", function (%s) return ",
-		     t->upi.x ? gname(C, t->upi.x) : "dkhole");
+		if (t->upi.x)
+			emit(", function (%s) return ", gname(C, t->upi.x));
+		else
+			emit(", function (dummy_c) return ");
 		gcode(t->upi.t);
 		emit(" end } }");
 		break;
@@ -605,8 +505,6 @@ gcode(struct Term *t)
 static void
 gterm(struct Term *t)
 {
-	char *x;
-
 /* tail: */
 	switch (t->typ) {
 	case Var:
@@ -624,9 +522,11 @@ gterm(struct Term *t)
 		gterm(t->upi.ty);
 		emit(", ");
 		gcode(t->upi.ty);
-		x = t->upi.x ? t->upi.x : "dkhole";
-		emit(", function (%s, ", gname(T, x));
-		emit("%s) return ", gname(C, x));
+		if (t->upi.x) {
+			emit(", function (%s, ", gname(T, t->upi.x));
+			emit("%s) return ", gname(C, t->upi.x));
+		} else
+			emit(", function (dummy_t, dummy_c) return ");
 		gterm(t->upi.t);
 		emit(" end } }");
 		break;
@@ -642,5 +542,63 @@ gterm(struct Term *t)
 	case Type:
 		emit("{ tk = ttype }");
 		break;
+	}
+}
+
+/* internal gpcode - Emit the expression representing the dynamic
+ * translation of a pattern in the lambda-Pi calculus.
+ */
+static void
+gpcode(struct Pat *p)
+{
+	int i;
+
+	if (p->np<0) {
+		emit("%s", gname(C, p->c));
+		return;
+	}
+	for (i=0; i<p->nd+p->np; i++)
+		emit("ap(");
+	emit("%s", gname(C, p->c));
+	for (i=0; i<p->nd; i++) {
+		emit(", ");
+		gcode(p->ds[i]);
+		emit(")");
+	}
+	for (i=0; i<p->np; i++) {
+		emit(", ");
+		gpcode(p->ps[i]);
+		emit(")");
+	}
+}
+
+/* internal gpterm - Emit the expression representing the static
+ * translation of a pattern in the lambda-Pi calculus.
+ */
+static void
+gpterm(struct Pat *p)
+{
+	int i;
+
+	if (p->np<0) {
+		emit("%s", gname(T, p->c));
+		return;
+	}
+	for (i=0; i<p->nd+p->np; i++)
+		emit("{ tk = tapp, tapp = { ");
+	emit("%s", gname(T, p->c));
+	for (i=0; i<p->nd; i++) {
+		emit(", ");
+		gterm(p->ds[i]);
+		emit(", ");
+		gcode(p->ds[i]);
+		emit(" } }");
+	}
+	for (i=0; i<p->np; i++) {
+		emit(", ");
+		gpterm(p->ps[i]);
+		emit(", ");
+		gpcode(p->ps[i]);
+		emit(" } }");
 	}
 }

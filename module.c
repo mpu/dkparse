@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "dk.h"
-#define IDLEN 256
 
 /* DIRSEP - Directory separator.
  */
@@ -64,7 +63,7 @@ mset(char *path)
 		path=p+1;
 	}
 	p=strchr(path, '.');
-	if (!p || strcmp(p, ".dk"))
+	if (!p || strcmp(p, ".dk")!=0)
 		fprintf(stderr, "%s: Warning, path %s should end in '.dk'.\n"
 		              , __func__, path);
 	if (!p)
@@ -92,5 +91,5 @@ mqual(char *x)
 	*id='.';
 	if (!copyto(id+1, x, x+strlen(x)+1))
 		exit(1); // FIXME
-	return astrdup(qid);
+	return astrdup(qid, id-qid+1);
 }
