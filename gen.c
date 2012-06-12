@@ -2,7 +2,22 @@
 #include <stdio.h>
 #include <string.h>
 #include "dk.h"
-#define emit printf
+#define emit(...) fprintf(gfile, __VA_ARGS__)
+
+/* ------------- Global settings. ------------- */
+
+/* gmode - The mode used to generate code. If the mode is
+ * Check then the Lua generated code, will type check the
+ * current module; if the mode is Compile, only the dynamic
+ * representation of terms will be compiled, the code
+ * produced must be used only when the module has been
+ * successfully type checked.
+ */
+enum GenMode gmode;
+
+/* gfile - The file in which generated code is printed.
+ */
+FILE *gfile;
 
 /* ------------- Pattern matrices. ------------- */
 
@@ -149,6 +164,7 @@ pmdef(struct PMat m, int c)
  */
 enum NameKind { C, T };
 
+static void gccon(char *, int);
 static char *gname(enum NameKind, char *);
 static void gterm(struct Term *);
 static void gcode(struct Term *);
@@ -167,7 +183,8 @@ genmod(void)
 
 	q=m=mget();
 	emit("--[[ Code for module %s. ]]\n", m);
-	emit("local "); /* This line causes a 20% speedup. */
+	if (gmode==Check)
+		emit("local "); /* This line causes a 20% speedup. */
 	while ((p=strchr(q, '.'))) {
 		emit("%.*s = { }\n", (int)(p-m), m);
 		q=p+1;
@@ -240,16 +257,13 @@ glocals(struct Rule *r)
 static void
 grules(struct PMat pm)
 {
-	int i, c, sep;
+	int i, c;
 	struct Pat *p;
 	struct PMat m;
 
 	if (pm.r==0) {
-		const int arity=crs->s[0].l->nd+crs->s[0].l->np;
-		emit("return { ck = ccon, ccon = \"%s\", args = { ", crs->x);
-		for (sep=0, i=1; i<=arity; i++, sep=1)
-			emit(sep ? ", y%d" : "y%d", i);
-		emit(" } }");
+		emit("return ");
+		gccon(crs->x, crs->s[0].l->nd+crs->s[0].l->np);
 		return;
 	}
 	for (c=0; c<pm.c; c++)
@@ -293,8 +307,9 @@ gchkenv(char *x, struct Term *t, void *unused)
 	emit("chkbeg(\"%s\")\n", x);
 	emit(iskind(t)?"chkkind(":"chktype(");
 	gterm(t);
-	emit(")\n%s = { ck = ccon, ccon = \"%s\", args = { } }\n", gname(C, x), x);
-	emit("%s = { tk = tbox, tbox = { ", gname(T, x));
+	emit(")\n%s = ", gname(C, x));
+	gccon(x, 0);
+	emit("\n%s = { tk = tbox, tbox = { ", gname(T, x));
 	gcode(t);
 	emit(", %s } }\n", gname(C, x));
 	emit("chkend(\"%s\")\n", x);
@@ -313,29 +328,33 @@ genrules(struct RSet *rs)
 	crs=rs;
 
 	if (ar==0) {
-		emit("--[[ Type checking the definition of %s. ]]\n", rs->x);
-		emit("chkbeg(\"definition of %s\")\n", rs->x);
-		emit("chk(");
-		gterm(rs->s[0].r);
-		emit(", %s.tbox[1])\n", gname(T, rs->x));
-		emit("chkend(\"definition of %s\")\n", rs->x);
+		if (gmode==Check) {
+			emit("--[[ Type checking the definition of %s. ]]\n", rs->x);
+			emit("chkbeg(\"definition of %s\")\n", rs->x);
+			emit("chk(");
+			gterm(rs->s[0].r);
+			emit(", %s.tbox[1])\n", gname(T, rs->x));
+			emit("chkend(\"definition of %s\")\n", rs->x);
+		}
 		emit("%s = ", gname(C, rs->x));
 		gcode(rs->s[0].r);
 		emit("\n\n");
 		return;
 	}
-	emit("--[[ Type checking rules of %s. ]]\n", rs->x);
-	emit("function check_rules()\nchkbeg(\"rules of %s\")\n", rs->x);
-	for (i=0; i<rs->i; i++) {
-		emit("chkbeg(\"rule %d\")\n", i+1);
-		eiter(rs->s[i].e, gchkenv, 0);
-		emit("do\nlocal ty = synth(0, ");
-		gpterm(rs->s[i].l);
-		emit(")\nchk(");
-		gterm(rs->s[i].r);
-		emit(", ty)\nend\nchkend(\"rule %d\")\n", i+1);
+	if (gmode==Check) {
+		emit("--[[ Type checking rules of %s. ]]\n", rs->x);
+		emit("function check_rules()\nchkbeg(\"rules of %s\")\n", rs->x);
+		for (i=0; i<rs->i; i++) {
+			emit("chkbeg(\"rule %d\")\n", i+1);
+			eiter(rs->s[i].e, gchkenv, 0);
+			emit("do\nlocal ty = synth(0, ");
+			gpterm(rs->s[i].l);
+			emit(")\nchk(");
+			gterm(rs->s[i].r);
+			emit(", ty)\nend\nchkend(\"rule %d\")\n", i+1);
+		}
+		emit("chkend(\"rules of %s\")\nend\ncheck_rules()\n", rs->x);
 	}
-	emit("chkend(\"rules of %s\")\nend\ncheck_rules()\n", rs->x);
 	emit("--[[ Compiling rules of %s. ]]\n", rs->x);
 	emit("%s = { ck = clam, arity = %d, args = { }, clam =\n", gname(C, rs->x), ar);
 	emit("function (y1");
@@ -354,8 +373,16 @@ genrules(struct RSet *rs)
 void
 gendecl(char *x, struct Term *t)
 {
-	emit("--[[ Type checking %s. ]]\n", x);
-	gchkenv(x, t, 0);
+	if (gmode==Check) {
+		emit("--[[ Type checking %s. ]]\n", x);
+		gchkenv(x, t, 0);
+	} else {
+		emit("%s =", gname(C, x));
+		gccon(x, 0);
+		emit("\n%s = { tk = tbox, tbox = { ", gname(T, x));
+		gcode(t);
+		emit(", %s } }\n", gname(C, x));
+	}
 	emit("\n");
 }
 
@@ -365,6 +392,20 @@ gendecl(char *x, struct Term *t)
  * these stacks are used to recurse on terms.
  */
 #define MAXSDPTH 128
+
+/* internal gccon - Generate the dynamic representation of
+ * the constant x applied to y1, ..., yn.
+ */
+static inline void
+gccon(char *x, int n)
+{
+	int i, sep;
+
+	emit("{ ck = ccon, ccon = \"%s\", args = {", x);
+	for (sep=0, i=1; i<=n; i++, sep=1)
+		emit(sep?", y%d":" y%d", i);
+	emit(" } }");
+}
 
 /* MAXID - Maximum size of an identifier in the generated code.
  */

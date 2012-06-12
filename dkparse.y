@@ -171,12 +171,37 @@ yyerror(const char *m)
 	exit(1);
 }
 
+static int
+opengfile(char *mod)
+{
+	char *f, *p;
+
+	f=xalloc(strlen(mod)+5);
+	strcpy(f, mod);
+	if (!(p=strrchr(f, '.')))
+		p=f+strlen(f);
+	strcpy(p, ".lua");
+
+	if (!(gfile=fopen(f, "w"))) {
+		fprintf(stderr, "Cannot open %s.\n", f);
+		free(f);
+		return 1;
+	}
+	free(f);
+	return 0;
+}
+
 int
 main(int argc, char **argv)
 {
+	gmode=Check;
 	if (argc<2) {
-		fputs("usage: dkparse FILES\n", stderr);
+		fputs("usage: dkparse [-c] FILES\n", stderr);
 		exit(1);
+	}
+	if (strcmp(argv[1], "-c")==0) {
+		gmode=Compile;
+		argv++, --argc;
 	}
 	initalloc();
 	initscope();
@@ -189,10 +214,17 @@ main(int argc, char **argv)
 			fprintf(stderr, "Invalid module name %s.\n", *argv);
 			continue;
 		}
+		if (gmode==Compile) {
+			if (opengfile(*argv))
+				continue;
+		} else
+			gfile=stdout;
 		fprintf(stderr, "Parsing module %s.\n", mget());
 		genmod();
 		yyparse();
 		fclose(f);
+		if (gmode==Compile)
+			fclose(gfile);
 	}
 	deinitscope();
 	deinitalloc();

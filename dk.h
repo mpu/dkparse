@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 /* Dk types and functions. */
 
 /* IDLEN - The maximum size of a fully qualified
@@ -128,6 +129,8 @@ int pushrule(struct Env *, struct Pat *, struct Term *);
 void dorules(void);
 
 /* Module gen.c */
+extern enum GenMode { Check, Compile } gmode;
+extern FILE *gfile;
 void genmod(void);
 void genrules(struct RSet *);
 void gendecl(char *, struct Term *);
