@@ -307,9 +307,9 @@ gchkenv(char *x, struct Term *t, void *unused)
 	emit("chkbeg(\"%s\")\n", x);
 	emit(iskind(t)?"chkkind(":"chktype(");
 	gterm(t);
-	emit(")\n%s = ", gname(C, x));
+	emit(")\nlocal %s = ", gname(C, x));
 	gccon(x, 0);
-	emit("\n%s = { tk = tbox, tbox = { ", gname(T, x));
+	emit("\nlocal %s = { tk = tbox, tbox = { ", gname(T, x));
 	gcode(t);
 	emit(", %s } }\n", gname(C, x));
 	emit("chkend(\"%s\")\n", x);
@@ -375,15 +375,17 @@ gendecl(char *x, struct Term *t)
 {
 	if (gmode==Check) {
 		emit("--[[ Type checking %s. ]]\n", x);
-		gchkenv(x, t, 0);
-	} else {
-		emit("%s =", gname(C, x));
-		gccon(x, 0);
-		emit("\n%s = { tk = tbox, tbox = { ", gname(T, x));
-		gcode(t);
-		emit(", %s } }\n", gname(C, x));
+		emit("chkbeg(\"%s\")\n", x);
+		emit(iskind(t)?"chkkind(":"chktype(");
+		gterm(t);
+		emit(")\n");
+		emit("chkend(\"%s\")\n", x);
 	}
-	emit("\n");
+	emit("%s = ", gname(C, x));
+	gccon(x, 0);
+	emit("\n%s = { tk = tbox, tbox = { ", gname(T, x));
+	gcode(t);
+	emit(", %s } }\n\n", gname(C, x));
 }
 
 /* ------------- Term compiling. ------------- */

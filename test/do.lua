@@ -7,9 +7,10 @@ do
         { name = "exemple", result = 0 },
         { name = "peano", result = 0, deps = { "coc", "logic" } },
         { name = "f", result = 0 },
-        { name = "compute", result = 0 },
+        -- { name = "compute", result = 0 },
         { name = "dotpat", result = 0},
         { name = "qualpat", result = 0 },
+        { name = "scope", result = 0 },
     }
 
     tests = { unit = unit_tests }
