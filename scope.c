@@ -152,6 +152,8 @@ tail:
 					" be applied.\n", __func__, p->c);
 			return 1;
 		}
+	if (aqual(p->c)) /* XXX Temporary hack to handle modules. */
+		goto scopechild;
 	p->c=mqual(p->c); /* Not in local scope, qualify it. */
 	id.x=p->c;
 	if (avlget(&id, genv))
