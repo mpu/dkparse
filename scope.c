@@ -85,7 +85,8 @@ tail:
 	case Pi:
 		r=tscp(t->upi.ty, e);
 		if (r) break;
-		cons(t->upi.x, &e);
+		if (t->upi.x)
+			cons(t->upi.x, &e);
 		t=t->upi.t;
 		goto tail;
 		break;
