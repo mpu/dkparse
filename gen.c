@@ -511,8 +511,12 @@ gterm(struct Term *t)
 		emit("%s", gname(T, t->uvar));
 		break;
 	case Lam:
-		emit("{ tk = tlam, tlam = { nil, ");
-		emit("function (%s, ", gname(T, t->ulam.x));
+		emit("{ tk = tlam, tlam = { ");
+		if (t->ulam.ty)
+			gcode(t->ulam.ty);
+		else
+			emit("nil");
+		emit(", function (%s, ", gname(T, t->ulam.x));
 		emit("%s) return ", gname(C, t->ulam.x));
 		gterm(t->ulam.t);
 		emit(" end } }");

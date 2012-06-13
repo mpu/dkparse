@@ -78,6 +78,10 @@ tail:
 		goto tail;
 		break;
 	case Lam:
+		if (t->ulam.ty) {
+			r=tscp(t->ulam.ty, e);
+			if (r) break;
+		}
 		cons(t->ulam.x, &e);
 		t=t->ulam.t;
 		goto tail;

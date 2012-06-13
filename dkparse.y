@@ -94,8 +94,8 @@ app: sterm     { $$ = $1; }
 term: app                      { $$ = $1; }
     | ID ':' app ARROW term    { $$ = mkpi($1, $3, $5); }
     | term ARROW term          { $$ = mkpi(0,  $1, $3); }
-    | ID ':' app FATARROW term { $$ = mklam($1, $5); }
-    | ID FATARROW term         { $$ = mklam($1, $3); }
+    | ID ':' app FATARROW term { $$ = mklam($1, $3, $5); }
+    | ID FATARROW term         { $$ = mklam($1, 0,  $3); }
 ;
 %%
 

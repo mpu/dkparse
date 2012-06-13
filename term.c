@@ -28,11 +28,12 @@ mkvar(char *s)
 /* mklam - Build a lambda node.
  */
 struct Term *
-mklam(char *s, struct Term *a)
+mklam(char *s, struct Term *ty, struct Term *a)
 {
 	struct Term *t = dkalloc(sizeof *t);
 	t->typ = Lam;
 	t->ulam.x = s;
+	t->ulam.ty = ty;
 	t->ulam.t = a;
 	return t;
 }

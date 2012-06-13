@@ -19,6 +19,7 @@ struct Term {
 		} app;
 		struct {
 			char *x;
+			struct Term *ty;
 			struct Term *t;
 		} lam;
 		struct {
@@ -97,7 +98,7 @@ void dkfree(void);
 extern struct Term *ttype;
 struct Term *mkapp(struct Term *, struct Term *);
 struct Term *mkvar(char *);
-struct Term *mklam(char *, struct Term *);
+struct Term *mklam(char *, struct Term *, struct Term *);
 struct Term *mkpi(char *, struct Term *, struct Term *);
 int napps(struct Term *, struct Term **);
 int iskind(struct Term *);

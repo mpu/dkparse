@@ -97,6 +97,11 @@ function synth(n, t)
     local c = synth(n, t.tapp[1]);
     assert(c.ck == cpi and check(n, t.tapp[2], c.cpi[1]));
     return c.cpi[2](t.tapp[3]);
+  elseif t.tk == tlam and t.tlam[1] then
+    local function cpif(x)
+      return synth(n, t.tlam[2](box(t.tlam[1], x), x));
+    end;
+    return { ck = cpi, cpi = { t.tlam[1], cpif } };
   else
     error("Type synthesis failed.");
   end

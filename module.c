@@ -25,7 +25,7 @@ static char *id;
 static inline char *
 copyto(char *s, char *f, char *t)
 {
-	if (!isalpha(*f))
+	if (!isalpha(*f) && *f!='_')
 		goto err;
 	if (t-f>IDLEN-2-(s-qid)) {
 		fprintf(stderr, "%s: Maximum qualified id length exceeded.\n"
