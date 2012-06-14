@@ -26,8 +26,8 @@ end
 
 local function push(c, v)
   local a = {};
-  for i=1,#c.args do
-    a[i] = c.args[i];
+  for i, arg in ipairs(c.args) do
+    a[i] = arg;
   end
   table.insert(a, v);
   if c.ck == clam then
@@ -61,15 +61,16 @@ function conv(n, a, b)
     return conv(n+1, ap(a, v), ap(b, v));
   elseif a.ck == ccon and b.ck == ccon
      and a.ccon == b.ccon and #a.args == #b.args then
-    if #a.args == 0 then
+    local len = #a.args;
+    if len == 0 then
       return true;
     end
-    for i=1,#a.args-1 do
-      if not conv(n, a.args[i], b.args[i]) then
+    for i, aarg in ipairs(a.args) do
+      if not conv(n, aarg, b.args[i]) then
         return false;
       end
     end
-    return conv(n, a.args[#a.args], b.args[#b.args]);
+    return conv(n, a.args[len], b.args[len]);
   elseif a.ck == ctype and b.ck == ctype then
     return true;
   elseif a.ck == ckind and b.ck == ckind then
@@ -174,8 +175,8 @@ function strc(c)
           .. ". " .. f(n+1, c.cpi[2](var(n))) .. ")";
     elseif c.ck == ccon then
       local s = "(" .. c.ccon;
-      for i=1,#c.args do
-        s = s .. " " .. f(n, c.args[i]);
+      for _, arg in ipairs(c.args) do
+        s = s .. " " .. f(n, arg);
       end
       return s .. ")";
     elseif c.ck == ctype then

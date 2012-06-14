@@ -38,8 +38,8 @@ function dkcheck(cat, f, deps)
 
     local fpath, dpath = f .. ".dk", ""
     if deps then
-        for i=1,#deps do
-            dpath = dpath .. " " .. deps[i] .. ".dk"
+        for _, d in ipairs(deps) do
+            dpath = dpath .. " " .. d .. ".dk"
         end
     end
     local luacmd = string.format("LUA_PATH=%s/lua/?.lua lua -l dedukti -", path)
