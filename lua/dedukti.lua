@@ -190,9 +190,4 @@ function strc(c)
   return f(0, c);
 end
 
---[[ Miscelaneous. ]]
-
--- Allows to load .dko files using require.
-package.path = "./?.dko;" .. package.path;
-
 -- vi: expandtab: sw=2
