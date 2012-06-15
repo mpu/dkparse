@@ -26,8 +26,8 @@ end
 
 local function push(c, v)
   local a = {};
-  for i, arg in ipairs(c.args) do
-    a[i] = arg;
+  for i=1,#c.args do
+    a[i] = c.args[i];
   end
   table.insert(a, v);
   if c.ck == clam then
@@ -65,8 +65,8 @@ function conv(n, a, b)
     if len == 0 then
       return true;
     end
-    for i, aarg in ipairs(a.args) do
-      if not conv(n, aarg, b.args[i]) then
+    for i=1,len-1 do
+      if not conv(n, a.args[i], b.args[i]) then
         return false;
       end
     end
