@@ -1,5 +1,30 @@
-dkparse is a small experiment trying to see how fast a
-dedukti source file can be parsed.
+dkparse (Dedukti) is a small implementation of a type
+checker for the lambda-Pi modulo. It features
+normalization by evaluation through compilation to Lua
+code.
+
+
+INSTALL
+
+To install the dkparse program make sure you have
+lua5.1 or luajit installed, install the bison grammar
+compiler and a C99 compliant compiler. Make sure the
+default settings in the Makefile file are valid on your
+current system (they should be). Then, issue the
+following command:
+    $ sudo make dkparse install
+
+You can test if your compiled version of dkparse is not
+rotten by issuing the following command (you will need
+lua5.1):
+    $ make test
+
+All tests must pass.
+
+
+CHANGES
+
+07/01 The makefile was changed to support installation.
 
 06/01 Lua code can be generated using dkparse, the
 feature is still experimental but on simple examples it
