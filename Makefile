@@ -36,5 +36,6 @@ install:
 	install -m 644 lua/dedukti.lua $(LUALIB)/dedukti.lua
 	install -m 755 dkparse $(BIN)/dkparse
 	ln -f $(BIN)/dkparse $(BIN)/dedukti
-	[ -e doc/dkparse.info.gz ] && \
-	  install -m 644 doc/dkparse.info.gz $(INFO)/dkparse.info.gz
+	if [ -e doc/dkparse.info.gz ]; then \
+	  install -m 644 doc/dkparse.info.gz $(INFO)/dkparse.info.gz; \
+	fi
