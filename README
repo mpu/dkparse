@@ -12,7 +12,19 @@ compiler and a C99 compliant compiler. Make sure the
 default settings in the Makefile file are valid on your
 current system (they should be). Then, issue the
 following command:
-    $ sudo make dkparse install
+    $ make
+
+If you want to compile the documentation, make sure you
+have GNU makeinfo installed and run:
+    $ make doc
+This will create the files doc/dkparse.info.gz and
+doc/dkparse.html, the info file will be installed in
+the directory specified by the Makefile, the HTML file
+can be viewed in any browser. Once installed, you can
+view the user manual using 'info dkparse'.
+
+To install dkparse, run:
+    $ sudo make install
 
 You can test if your compiled version of dkparse is not
 rotten by issuing the following command (you will need

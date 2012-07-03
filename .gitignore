@@ -3,4 +3,6 @@ dkparse.tab.c
 *.o
 *.output
 *.out
+*.html
+*.gz
 *.sw[po]

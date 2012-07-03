@@ -1,6 +1,7 @@
 # Installation settings
 LUALIB = /usr/share/lua/5.1
 BIN = /usr/bin
+INFO = /usr/share/info
 
 # Compilation
 CFILES = lib/avl.c alloc.c term.c pat.c rule.c dkparse.tab.c scope.c module.c gen.c
@@ -17,7 +18,7 @@ dkparse.tab.c: dkparse.y dk.h
 
 $(OFILES): dk.h
 
-.PHONY: stat test install
+.PHONY: stat test doc install
 
 SOURCES=lib/avl.c alloc.c term.c pat.c rule.c scope.c module.c gen.c
 stat:
@@ -26,7 +27,14 @@ stat:
 test:
 	lua test/do.lua -p `pwd`
 
+doc:
+	makeinfo doc/dkparse.texinfo -o doc/dkparse.info
+	gzip doc/dkparse.info
+	makeinfo --no-split --html doc/dkparse.texinfo -o doc/dkparse.html
+
 install:
 	install -m 644 lua/dedukti.lua $(LUALIB)/dedukti.lua
 	install -m 755 dkparse $(BIN)/dkparse
-	ln $(BIN)/dkparse $(BIN)/dedukti
+	ln -f $(BIN)/dkparse $(BIN)/dedukti
+	[ -e doc/dkparse.info.gz ] && \
+	  install -m 644 doc/dkparse.info.gz $(INFO)/dkparse.info.gz
