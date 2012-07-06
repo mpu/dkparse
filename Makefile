@@ -33,9 +33,10 @@ doc:
 	makeinfo --no-split --html doc/dkparse.texinfo -o doc/dkparse.html
 
 install:
-	install -m 644 lua/dedukti.lua $(LUALIB)/dedukti.lua
 	install -m 755 dkparse $(BIN)/dkparse
 	ln -f $(BIN)/dkparse $(BIN)/dedukti
+	mkdir -p $(LUALIB)
+	install -m 644 lua/dedukti.lua $(LUALIB)/dedukti.lua
 	if [ -e doc/dkparse.info.gz ]; then \
 	  install -m 644 doc/dkparse.info.gz $(INFO)/dkparse.info.gz; \
 	fi
