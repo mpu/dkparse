@@ -196,7 +196,7 @@ main(int argc, char **argv)
 {
 	gmode=Check;
 	if (argc<2) {
-		fputs("usage: dkparse [-c] FILES\n", stderr);
+		printf("usage: %s [-c] FILES\n", argv[0]?argv[0]:"dkparse");
 		exit(1);
 	}
 	if (strcmp(argv[1], "-c")==0) {

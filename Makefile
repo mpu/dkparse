@@ -28,15 +28,15 @@ test:
 	lua test/do.lua -p `pwd`
 
 doc:
-	makeinfo doc/dkparse.texinfo -o doc/dkparse.info
-	gzip doc/dkparse.info
-	makeinfo --no-split --html doc/dkparse.texinfo -o doc/dkparse.html
+	makeinfo doc/dedukti.texinfo -o doc/dedukti.info
+	gzip doc/dedukti.info
+	makeinfo --no-split --html doc/dedukti.texinfo -o doc/dedukti.html
 
 install:
 	install -m 755 dkparse $(BIN)/dkparse
 	ln -f $(BIN)/dkparse $(BIN)/dedukti
 	mkdir -p $(LUALIB)
 	install -m 644 lua/dedukti.lua $(LUALIB)/dedukti.lua
-	if [ -e doc/dkparse.info.gz ]; then \
-	  install -m 644 doc/dkparse.info.gz $(INFO)/dkparse.info.gz; \
+	if [ -e doc/dedukti.info.gz ]; then \
+	  install -m 644 doc/dedukti.info.gz $(INFO)/dedukti.info.gz; \
 	fi
