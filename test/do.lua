@@ -2,15 +2,15 @@
 
 do
     local unit_tests = {
-        { name = "bug_sort", result = 1 },
-        { name = "bug_abs", result = 1 },
-        { name = "exemple", result = 0 },
-        { name = "peano", result = 0, deps = { "coc", "logic" } },
-        { name = "f", result = 0 },
-        -- { name = "compute", result = 0 },
-        { name = "dotpat", result = 0},
-        { name = "qualpat", result = 0 },
-        { name = "scope", result = 0 },
+        { name = "bug_sort", result = nil },
+        { name = "bug_abs", result = nil },
+        { name = "exemple", result = true },
+        { name = "peano", result = true, deps = { "coc", "logic" } },
+        { name = "f", result = true },
+        -- { name = "compute", result = true },
+        { name = "dotpat", result = true},
+        { name = "qualpat", result = true },
+        { name = "scope", result = true },
     }
 
     tests = { unit = unit_tests }
@@ -32,8 +32,9 @@ local function green(s) return "\027[32m" .. s .. "\027[m" end
 local function   red(s) return "\027[31m" .. s .. "\027[m" end
 
 function dkcheck(cat, f, deps)
-    local function clamp(i)
-        if i ~= 0 then return 1 else return 0 end
+    local function clamp(ret)
+        if _VERSION ~= "Lua 5.1" then return ret end
+        if ret ~= 0 then return nil else return true end
     end
 
     local fpath, dpath = f .. ".dk", ""
