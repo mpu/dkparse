@@ -120,7 +120,12 @@ skipspaces(void)
 	}
 }
 
-#define istoken(c) (isalnum(c) || c=='_' || c=='\'')
+static int
+istoken(int c)
+{
+	return isalnum(c) || c=='_' || c=='\'';
+}
+
 static int
 yylex(void)
 {
